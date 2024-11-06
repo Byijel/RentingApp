@@ -53,3 +53,4 @@ output.json
 obj/
 .externalNativeBuild
 >>>>>>> 1fa6a6fa1c7876ea696f105c51fe9d61dba08489
+.vscode/settings.json
