@@ -1,16 +1,22 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
+    <!-- Base application theme for night mode. -->
     <style name="Theme.RentingApp" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
         <!-- Primary brand color. -->
-        <item name="colorPrimary">@color/purple_200</item>
-        <item name="colorPrimaryVariant">@color/purple_700</item>
-        <item name="colorOnPrimary">@color/black</item>
+        <item name="colorPrimary">@color/dark_blue_secondary</item> <!-- Dark blue for a subtle, night-friendly primary -->
+        <item name="colorPrimaryVariant">@color/black_text</item> <!-- Black text color as the variant for better visibility on dark backgrounds -->
+        <item name="colorOnPrimary">@color/white</item> <!-- White text on dark primary for readability -->
+
         <!-- Secondary brand color. -->
-        <item name="colorSecondary">@color/teal_200</item>
-        <item name="colorSecondaryVariant">@color/teal_200</item>
-        <item name="colorOnSecondary">@color/black</item>
+        <item name="colorSecondary">@color/orange_details</item> <!-- Orange for contrast and visibility in night mode -->
+        <item name="colorSecondaryVariant">@color/blue_main_20</item> <!-- Translucent blue for subtle secondary effects -->
+        <item name="colorOnSecondary">@color/white</item> <!-- White text on secondary for readability -->
+
+        <!-- Background color. -->
+        <item name="android:colorBackground">@color/black_text</item> <!-- Use black as background for true night mode experience -->
+
         <!-- Status bar color. -->
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
-        <!-- Customize your theme here. -->
+
+        <!-- Customize other night mode theme elements as needed. -->
     </style>
 </resources>
