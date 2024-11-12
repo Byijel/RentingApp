@@ -26,27 +26,46 @@ class MainActivity : AppCompatActivity() {
 
         setSupportActionBar(binding.appBarMain.toolbar)
 
+        // Set up the Floating Action Button (FAB) click listener
         binding.appBarMain.fab.setOnClickListener { view ->
             Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
                 .setAction("Action", null)
                 .setAnchorView(R.id.fab).show()
         }
+
         val drawerLayout: DrawerLayout = binding.drawerLayout
         val navView: NavigationView = binding.navView
         val navController = findNavController(R.id.nav_host_fragment_content_main)
-        // Passing each menu ID as a set of Ids because each
-        // menu should be considered as top level destinations.
+
+        // Set up the appBarConfiguration for the top-level destinations
         appBarConfiguration = AppBarConfiguration(
             setOf(
-                R.id.nav_home, R.id.nav_gallery, R.id.nav_slideshow
+                R.id.nav_home, R.id.nav_search, R.id.nav_rent_out, R.id.nav_rent_near_me, R.id.nav_my_rents
             ), drawerLayout
         )
+
+        // Set the NavigationView item selected listener
+        navView.setNavigationItemSelectedListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.nav_home -> navController.navigate(R.id.nav_home)
+                R.id.nav_search -> navController.navigate(R.id.nav_search)
+                R.id.nav_rent_near_me -> navController.navigate(R.id.nav_rent_near_me)
+                R.id.nav_my_rents -> navController.navigate(R.id.nav_my_rents)
+                R.id.nav_rent_out -> navController.navigate(R.id.nav_rent_out)
+            }
+            // Close the drawer after selection
+            drawerLayout.closeDrawers()
+            true
+        }
+
+        // Set up the action bar with the navController
         setupActionBarWithNavController(navController, appBarConfiguration)
+
+        // Link the NavigationView with the NavController
         navView.setupWithNavController(navController)
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        // Inflate the menu; this adds items to the action bar if it is present.
         menuInflater.inflate(R.menu.main, menu)
         return true
     }

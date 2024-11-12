@@ -7,19 +7,24 @@
 
     <fragment
         android:id="@+id/nav_home"
-        android:name="com.example.rentingapp.ui.home.HomeFragment"
+        android:name="com.example.rentingapp.ui.home.Home"
         android:label="@string/menu_home"
         tools:layout="@layout/fragment_home" />
-
     <fragment
-        android:id="@+id/nav_gallery"
-        android:name="com.example.rentingapp.ui.gallery.GalleryFragment"
-        android:label="@string/menu_gallery"
-        tools:layout="@layout/fragment_gallery" />
-
+        android:id="@+id/nav_search"
+        android:name="com.example.rentingapp.ui.search.Search"
+        tools:layout="@layout/fragment_search" />
     <fragment
-        android:id="@+id/nav_slideshow"
-        android:name="com.example.rentingapp.ui.slideshow.SlideshowFragment"
-        android:label="@string/menu_slideshow"
-        tools:layout="@layout/fragment_slideshow" />
+        android:id="@+id/nav_rent_near_me"
+        android:name="com.example.rentingapp.ui.rentNearMe.RentNearMe"
+        tools:layout="@layout/fragment_rent_near_me" />
+    <fragment
+        android:id="@+id/nav_rent_out"
+        android:name="com.example.rentingapp.ui.rentOut.RentOut"
+        tools:layout="@layout/fragment_rent_out" />
+    <fragment
+        android:id="@+id/nav_my_rents"
+        android:name="com.example.rentingapp.ui.myRents.MyRents"
+        tools:layout="@layout/fragment_my_rents" />
+
 </navigation>
