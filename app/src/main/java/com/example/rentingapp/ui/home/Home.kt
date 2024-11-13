@@ -1,11 +1,14 @@
-package com.example.rentingapp.ui.home
 
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import com.example.rentingapp.R
+import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.rentingapp.databinding.FragmentHomeBinding
+import com.example.rentingapp.RentalItem
+import com.google.firebase.Firebase
+import com.google.firebase.firestore.firestore
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -18,43 +21,53 @@ private const val ARG_PARAM2 = "param2"
  * create an instance of this fragment.
  */
 class Home : Fragment() {
-    // TODO: Rename and change types of parameters
-    private var param1: String? = null
-    private var param2: String? = null
+  private var _binding: FragmentHomeBinding? = null
+    private val binding get() = _binding!!
+    private lateinit var applianceAdapter: ApplianceAdapter
+    private val appliances = mutableListOf<RentalItem>()
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        arguments?.let {
-            param1 = it.getString(ARG_PARAM1)
-            param2 = it.getString(ARG_PARAM2)
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        _binding = FragmentHomeBinding.inflate(inflater, container, false)
+
+        setupRecyclerView()
+        loadAppliances()
+
+        return binding.root
+    }
+
+    private fun setupRecyclerView() {
+        applianceAdapter = ApplianceAdapter(appliances)
+        binding.recyclerViewAppliances.apply {
+            layoutManager = LinearLayoutManager(context)
+            adapter = applianceAdapter
         }
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? {
-        // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_home, container, false)
-    }
-
-    companion object {
-        /**
-         * Use this factory method to create a new instance of
-         * this fragment using the provided parameters.
-         *
-         * @param param1 Parameter 1.
-         * @param param2 Parameter 2.
-         * @return A new instance of fragment Home.
-         */
-        // TODO: Rename and change types and number of parameters
-        @JvmStatic
-        fun newInstance(param1: String, param2: String) =
-            Home().apply {
-                arguments = Bundle().apply {
-                    putString(ARG_PARAM1, param1)
-                    putString(ARG_PARAM2, param2)
+    private fun loadAppliances() {
+        Firebase.firestore.collection("appliances")
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    return@addSnapshotListener
                 }
+
+                appliances.clear()
+                snapshot?.forEach { document ->
+                    val appliance = RentalItem(
+                        id = document.id,
+                        applianceName = document.getString("applianceName") ?: "",
+                        dailyRate = document.getDouble("dailyRate") ?: 0.0,
+                        category = document.getString("category") ?: "",
+                        condition = document.getString("condition") ?: "",
+                        description = document.getString("description") ?: "",
+                        availability = document.getBoolean("availability") ?: true
+                    )
+                    appliances.add(appliance)
+                }
+                applianceAdapter.notifyDataSetChanged()
             }
     }
 }
