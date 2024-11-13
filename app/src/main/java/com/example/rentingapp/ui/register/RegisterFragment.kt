@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
+import com.example.rentingapp.R
 import com.example.rentingapp.databinding.FragmentRegisterBinding
 
 class RegisterFragment : Fragment() {
@@ -21,15 +22,19 @@ class RegisterFragment : Fragment() {
         return binding.root
     }
 
-    /*
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.backButton.setOnClickListener {
-            findNavController().popBackStack()
+//        binding.backButton.setOnClickListener {
+//            findNavController().popBackStack()
+//        }
+
+        binding.registerButton.setOnClickListener {
+            findNavController().navigate(R.id.nav_home)
         }
     }
-     */
+
 
     override fun onDestroyView() {
         super.onDestroyView()
