@@ -1,3 +1,4 @@
+package com.example.rentingapp.ui.home
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -9,7 +10,6 @@ import com.example.rentingapp.databinding.FragmentHomeBinding
 import com.example.rentingapp.RentalItem
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
-
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
 private const val ARG_PARAM1 = "param1"
@@ -21,7 +21,7 @@ private const val ARG_PARAM2 = "param2"
  * create an instance of this fragment.
  */
 class Home : Fragment() {
-  private var _binding: FragmentHomeBinding? = null
+    private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
     private lateinit var applianceAdapter: ApplianceAdapter
     private val appliances = mutableListOf<RentalItem>()
@@ -69,5 +69,10 @@ class Home : Fragment() {
                 }
                 applianceAdapter.notifyDataSetChanged()
             }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
     }
 }
