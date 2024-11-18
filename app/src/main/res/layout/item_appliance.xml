@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView 
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
@@ -12,6 +13,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
+        <!-- Availability Badge -->
         <TextView
             android:id="@+id/textAvailability"
             android:layout_width="wrap_content"
@@ -20,24 +22,26 @@
             android:background="@drawable/availability_badge_background"
             android:paddingHorizontal="8dp"
             android:paddingVertical="2dp"
-            android:text="Available"
             android:textColor="@android:color/white"
             android:textSize="12sp"
             android:elevation="4dp"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="Available" />
 
+        <!-- Item Image -->
         <ImageView
             android:id="@+id/imageAppliance"
             android:layout_width="120dp"
             android:layout_height="120dp"
             android:layout_margin="8dp"
-            android:contentDescription="Appliance image"
+            android:contentDescription="@string/appliance_image_description"
             android:scaleType="centerCrop"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/textAvailability"
             tools:src="@tools:sample/backgrounds/scenic" />
 
+        <!-- Item Details -->
         <TextView
             android:id="@+id/textApplianceName"
             android:layout_width="0dp"
@@ -101,6 +105,7 @@
             app:layout_constraintTop_toBottomOf="@id/textDescription"
             tools:text="Like New" />
 
+        <!-- Divider -->
         <View
             android:id="@+id/divider"
             android:layout_width="match_parent"
@@ -109,6 +114,7 @@
             android:background="?android:attr/listDivider"
             app:layout_constraintTop_toBottomOf="@id/imageAppliance" />
 
+        <!-- Owner Info -->
         <TextView
             android:id="@+id/textUserLabel"
             android:layout_width="wrap_content"
@@ -116,7 +122,7 @@
             android:layout_marginStart="16dp"
             android:layout_marginTop="8dp"
             android:layout_marginBottom="8dp"
-            android:text="Owner:"
+            android:text="@string/owner_label"
             android:textStyle="bold"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"

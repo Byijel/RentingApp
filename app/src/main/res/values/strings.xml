@@ -39,5 +39,7 @@
     <string name="rent_out_description_hint">Describe your item (features, specifications, rules, etc.)</string>
     <string name="rent_out_price_hint">Enter price per day</string>
     <string name="rent_out_name_hint">Enter item name</string>
+    <string name="appliance_image_description">Appliance image</string>
+    <string name="owner_label">Owner:</string>
 
 </resources>

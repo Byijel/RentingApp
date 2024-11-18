@@ -16,52 +16,6 @@ import java.util.Locale
 class ApplianceAdapter(private val appliances: List<RentalItem>) :
     RecyclerView.Adapter<ApplianceAdapter.ApplianceViewHolder>() {
 
-    class ApplianceViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        private val imageAppliance: ImageView = view.findViewById(R.id.imageAppliance)
-        private val textApplianceName: TextView = view.findViewById(R.id.textApplianceName)
-        private val textCategory: TextView = view.findViewById(R.id.textCategory)
-        private val textDailyRate: TextView = view.findViewById(R.id.textDailyRate)
-        private val textDescription: TextView = view.findViewById(R.id.textDescription)
-        private val textCondition: TextView = view.findViewById(R.id.textCondition)
-        private val textAvailability: TextView = view.findViewById(R.id.textAvailability)
-        private val textUsername: TextView = view.findViewById(R.id.textUsername)
-
-        fun bind(appliance: RentalItem) {
-            textApplianceName.text = appliance.applianceName
-            textCategory.text = appliance.category
-            
-            // Format price with Euro symbol and Belgian locale
-            val numberFormat = NumberFormat.getCurrencyInstance(Locale("nl", "BE"))
-            textDailyRate.text = "${numberFormat.format(appliance.dailyRate)}/day"
-            
-            textDescription.text = appliance.description
-            textCondition.text = appliance.condition
-
-            // Set availability badge
-            textAvailability.apply {
-                text = if (appliance.availability) "Available" else "Unavailable"
-                background = ContextCompat.getDrawable(
-                    context,
-                    if (appliance.availability) R.drawable.availability_badge_background
-                    else R.drawable.unavailable_badge_background
-                )
-            }
-
-            // Set temporary username (to be replaced with actual user data)
-            textUsername.text = "User123"
-
-            // Load image or set placeholder
-            appliance.image?.let { blob ->
-                try {
-                    val bitmap = BitmapFactory.decodeByteArray(blob.toBytes(), 0, blob.toBytes().size)
-                    imageAppliance.setImageBitmap(bitmap)
-                } catch (e: Exception) {
-                    imageAppliance.setImageResource(R.drawable.ic_appliance_placeholder)
-                }
-            } ?: imageAppliance.setImageResource(R.drawable.ic_appliance_placeholder)
-        }
-    }
-
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ApplianceViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_appliance, parent, false)
@@ -73,4 +27,61 @@ class ApplianceAdapter(private val appliances: List<RentalItem>) :
     }
 
     override fun getItemCount() = appliances.size
+
+    class ApplianceViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        private val imageAppliance: ImageView = view.findViewById(R.id.imageAppliance)
+        private val textApplianceName: TextView = view.findViewById(R.id.textApplianceName)
+        private val textCategory: TextView = view.findViewById(R.id.textCategory)
+        private val textDailyRate: TextView = view.findViewById(R.id.textDailyRate)
+        private val textDescription: TextView = view.findViewById(R.id.textDescription)
+        private val textCondition: TextView = view.findViewById(R.id.textCondition)
+        private val textAvailability: TextView = view.findViewById(R.id.textAvailability)
+        private val textUsername: TextView = view.findViewById(R.id.textUsername)
+
+        fun bind(appliance: RentalItem) {
+            bindTextViews(appliance)
+            bindAvailabilityBadge(appliance.availability)
+            bindImage(appliance)
+        }
+
+        private fun bindTextViews(appliance: RentalItem) {
+            textApplianceName.text = appliance.applianceName
+            textCategory.text = appliance.category
+            textDailyRate.text = formatPrice(appliance.dailyRate)
+            textDescription.text = appliance.description
+            textCondition.text = appliance.condition
+            textUsername.text = "User123" // Placeholder until user system is implemented
+        }
+
+        private fun bindAvailabilityBadge(isAvailable: Boolean) {
+            textAvailability.apply {
+                text = if (isAvailable) "Available" else "Unavailable"
+                background = ContextCompat.getDrawable(
+                    context,
+                    if (isAvailable) R.drawable.availability_badge_background
+                    else R.drawable.unavailable_badge_background
+                )
+            }
+        }
+
+        private fun bindImage(appliance: RentalItem) {
+            appliance.image?.let { blob ->
+                try {
+                    val bitmap = BitmapFactory.decodeByteArray(blob.toBytes(), 0, blob.toBytes().size)
+                    imageAppliance.setImageBitmap(bitmap)
+                } catch (e: Exception) {
+                    setPlaceholderImage()
+                }
+            } ?: setPlaceholderImage()
+        }
+
+        private fun setPlaceholderImage() {
+            imageAppliance.setImageResource(R.drawable.ic_appliance_placeholder)
+        }
+
+        private fun formatPrice(price: Double): String {
+            val numberFormat = NumberFormat.getCurrencyInstance(Locale("nl", "BE"))
+            return "${numberFormat.format(price)}/day"
+        }
+    }
 }
