@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.example.rentingapp.R
@@ -12,6 +13,7 @@ import com.example.rentingapp.databinding.FragmentLoginBinding
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
+
 
 class LoginFragment : Fragment() {
 
@@ -82,11 +84,22 @@ class LoginFragment : Fragment() {
                     Toast.makeText(context, "Login successful!", Toast.LENGTH_SHORT).show()
                     findNavController().navigate(R.id.nav_home)
                 } else {
-                    Toast.makeText(context, "Login failed: ${task.exception?.message}", 
-                        Toast.LENGTH_SHORT).show()
+                    showErrorDialog(task.exception?.message ?: "Unknown error occurred")
                     binding.loginButton.isEnabled = true
                 }
             }
+    }
+
+    private fun showErrorDialog(errorMessage: String) {
+        context?.let {
+            AlertDialog.Builder(it)
+                .setTitle("Login Failed")
+                .setMessage(errorMessage)
+                .setPositiveButton("OK") { dialog, _ ->
+                    dialog.dismiss()
+                }
+                .show()
+        }
     }
 
     private fun sendPasswordResetEmail(email: String) {
