@@ -27,12 +27,13 @@
     <string name="rent_out_title">Rent Out Your Item</string>
     <string name="rent_out_item_name">Item Name</string>
     <string name="rent_out_description">Description</string>
-    <string name="rent_out_price_per_day">Price per Day</string>
+    <string name="rent_out_price_per_day">Price per Day (€)</string>
     <string name="rent_out_category">Category</string>
     <string name="rent_out_condition">Condition</string>
-    <string name="rent_out_add_photos">Add Photos</string>
+    <string name="rent_out_images">Images</string>
+    <string name="rent_out_add_image">Add Image</string>
     <string name="rent_out_location">Location</string>
-    <string name="rent_out_submit">List Item for Rent</string>
+    <string name="rent_out_submit">Submit</string>
     <string name="rent_out_category_prompt">Select a category</string>
     <string name="rent_out_condition_prompt">Select condition</string>
     <string name="rent_out_description_hint">Describe your item (features, specifications, rules, etc.)</string>

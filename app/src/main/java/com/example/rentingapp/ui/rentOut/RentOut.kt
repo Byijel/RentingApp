@@ -14,10 +14,12 @@ import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.rentingapp.R
 import com.example.rentingapp.adapters.ImageAdapter
 import com.example.rentingapp.models.Category
+import com.example.rentingapp.models.Condition
 import com.example.rentingapp.services.FirestoreImageService
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
@@ -25,14 +27,15 @@ import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
 
 class RentOut : Fragment() {
-    private lateinit var photosRecyclerView: RecyclerView
-    private lateinit var addPhotosButton: MaterialButton
+    private lateinit var imageRecyclerView: RecyclerView
+    private lateinit var addImageButton: MaterialButton
     private lateinit var submitButton: MaterialButton
     private lateinit var imageAdapter: ImageAdapter
     private lateinit var nameEditText: TextInputEditText
     private lateinit var descriptionEditText: TextInputEditText
     private lateinit var priceEditText: TextInputEditText
     private lateinit var categorySpinner: AutoCompleteTextView
+    private lateinit var conditionSpinner: AutoCompleteTextView
     private lateinit var imageService: FirestoreImageService
 
     private val db = Firebase.firestore
@@ -60,7 +63,7 @@ class RentOut : Fragment() {
         
         initializeViews(view)
         setupImageAdapter()
-        setupCategoryDropdown()
+        setupDropdowns()
         setupClickListeners()
         
         // Initialize image service
@@ -68,30 +71,40 @@ class RentOut : Fragment() {
     }
 
     private fun initializeViews(view: View) {
-        photosRecyclerView = view.findViewById(R.id.photosRecyclerView)
-        addPhotosButton = view.findViewById(R.id.addPhotosButton)
+        imageRecyclerView = view.findViewById(R.id.imageRecyclerView)
+        addImageButton = view.findViewById(R.id.addImageButton)
         submitButton = view.findViewById(R.id.submitButton)
         nameEditText = view.findViewById(R.id.nameEditText)
         descriptionEditText = view.findViewById(R.id.descriptionEditText)
         priceEditText = view.findViewById(R.id.priceEditText)
         categorySpinner = view.findViewById(R.id.categorySpinner)
+        conditionSpinner = view.findViewById(R.id.conditionSpinner)
     }
 
-    private fun setupCategoryDropdown() {
+    private fun setupDropdowns() {
+        // Setup category dropdown
         val categories = Category.getDisplayNames()
-        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, categories)
-        categorySpinner.setAdapter(adapter)
+        val categoryAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, categories)
+        categorySpinner.setAdapter(categoryAdapter)
+
+        // Setup condition dropdown
+        val conditions = Condition.values().map { it.displayName }
+        val conditionAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, conditions)
+        conditionSpinner.setAdapter(conditionAdapter)
     }
 
     private fun setupImageAdapter() {
         imageAdapter = ImageAdapter { position ->
             removeImage(position)
         }
-        photosRecyclerView.adapter = imageAdapter
+        imageRecyclerView.apply {
+            layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
+            adapter = imageAdapter
+        }
     }
 
     private fun setupClickListeners() {
-        addPhotosButton.setOnClickListener {
+        addImageButton.setOnClickListener {
             openImagePicker()
         }
 
@@ -126,6 +139,16 @@ class RentOut : Fragment() {
             isValid = false
         }
 
+        if (conditionSpinner.text.isNullOrBlank()) {
+            conditionSpinner.error = "Condition is required"
+            isValid = false
+        }
+
+        if (imageAdapter.itemCount == 0) {
+            Toast.makeText(context, "At least one image is required", Toast.LENGTH_SHORT).show()
+            isValid = false
+        }
+
         return isValid
     }
 
@@ -146,6 +169,7 @@ class RentOut : Fragment() {
                 "description" to descriptionEditText.text.toString(),
                 "price" to (priceEditText.text.toString().replace(",", ".").toDoubleOrNull() ?: 0.0),
                 "category" to categorySpinner.text.toString(),
+                "condition" to conditionSpinner.text.toString(),
                 "images" to imagesMap,
                 "createdAt" to com.google.firebase.Timestamp.now(),
                 "available" to true
@@ -177,8 +201,9 @@ class RentOut : Fragment() {
         descriptionEditText.text?.clear()
         priceEditText.text?.clear()
         categorySpinner.text?.clear()
+        conditionSpinner.text?.clear()
         imageAdapter.clearImages()
-        photosRecyclerView.visibility = View.GONE
+        imageRecyclerView.visibility = View.GONE
     }
 
     private fun openImagePicker() {
@@ -188,13 +213,13 @@ class RentOut : Fragment() {
 
     private fun addImageToAdapter(uri: Uri) {
         imageAdapter.addImage(uri)
-        photosRecyclerView.visibility = View.VISIBLE
+        imageRecyclerView.visibility = View.VISIBLE
     }
 
     private fun removeImage(position: Int) {
         imageAdapter.removeImage(position)
         if (imageAdapter.itemCount == 0) {
-            photosRecyclerView.visibility = View.GONE
+            imageRecyclerView.visibility = View.GONE
         }
     }
 }

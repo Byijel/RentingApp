@@ -12,6 +12,21 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
+        <TextView
+            android:id="@+id/textAvailability"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="8dp"
+            android:background="@drawable/availability_badge_background"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="2dp"
+            android:text="Available"
+            android:textColor="@android:color/white"
+            android:textSize="12sp"
+            android:elevation="4dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
         <ImageView
             android:id="@+id/imageAppliance"
             android:layout_width="120dp"
@@ -20,7 +35,7 @@
             android:contentDescription="Appliance image"
             android:scaleType="centerCrop"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/textAvailability"
             tools:src="@tools:sample/backgrounds/scenic" />
 
         <TextView
@@ -64,13 +79,26 @@
             tools:text="€10/day" />
 
         <TextView
+            android:id="@+id/textDescription"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textSize="12sp"
+            app:layout_constraintEnd_toStartOf="@id/imageAppliance"
+            app:layout_constraintStart_toStartOf="@id/textApplianceName"
+            app:layout_constraintTop_toBottomOf="@id/textDailyRate"
+            tools:text="A high-quality washing machine perfect for your laundry needs..." />
+
+        <TextView
             android:id="@+id/textCondition"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             app:layout_constraintEnd_toStartOf="@id/imageAppliance"
             app:layout_constraintStart_toStartOf="@id/textApplianceName"
-            app:layout_constraintTop_toBottomOf="@id/textDailyRate"
+            app:layout_constraintTop_toBottomOf="@id/textDescription"
             tools:text="Like New" />
 
         <View
@@ -100,26 +128,13 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_marginEnd="16dp"
+            android:ellipsize="end"
+            android:maxLines="1"
             app:layout_constraintBottom_toBottomOf="@id/textUserLabel"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/textUserLabel"
             app:layout_constraintTop_toTopOf="@id/textUserLabel"
-            tools:text="John Doe" />
-
-        <TextView
-            android:id="@+id/textAvailability"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_margin="8dp"
-            android:background="@drawable/availability_badge_background"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="2dp"
-            android:textColor="@android:color/white"
-            android:textSize="12sp"
-            app:layout_constraintEnd_toEndOf="@id/imageAppliance"
-            app:layout_constraintTop_toTopOf="@id/imageAppliance"
-            tools:text="Available"
-            tools:background="@android:color/holo_green_dark" />
+            tools:text="User123" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
