@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
+import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
@@ -17,6 +18,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.rentingapp.R
 import com.example.rentingapp.adapters.ImageAdapter
 import com.example.rentingapp.models.Category
+import com.example.rentingapp.services.FirestoreImageService
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.Firebase
@@ -31,8 +33,10 @@ class RentOut : Fragment() {
     private lateinit var descriptionEditText: TextInputEditText
     private lateinit var priceEditText: TextInputEditText
     private lateinit var categorySpinner: AutoCompleteTextView
+    private lateinit var imageService: FirestoreImageService
 
     private val db = Firebase.firestore
+    private val TAG = "RentOut"
 
     private val imagePickerLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -58,6 +62,9 @@ class RentOut : Fragment() {
         setupImageAdapter()
         setupCategoryDropdown()
         setupClickListeners()
+        
+        // Initialize image service
+        imageService = FirestoreImageService(requireContext())
     }
 
     private fun initializeViews(view: View) {
@@ -123,26 +130,46 @@ class RentOut : Fragment() {
     }
 
     private fun createRentOutPost() {
-        val rentOutPost = hashMapOf(
-            "name" to nameEditText.text.toString(),
-            "description" to descriptionEditText.text.toString(),
-            "price" to (priceEditText.text.toString().replace(",", ".").toDoubleOrNull() ?: 0.0),
-            "category" to categorySpinner.text.toString(),
-            "createdAt" to com.google.firebase.Timestamp.now(),
-            "available" to true
-        )
+        try {
+            // Convert images to blobs
+            val images = imageAdapter.getImages()
+            val imageBlobs = imageService.uriToBlobs(images)
 
-        db.collection("RentOutPosts")
-            .add(rentOutPost)
-            .addOnSuccessListener {
-                Toast.makeText(context, "Post created successfully!", Toast.LENGTH_SHORT).show()
-                clearForm()
-                submitButton.isEnabled = true
+            // Create images map for Firestore
+            val imagesMap = imageBlobs.associate { (id, blob) ->
+                id to blob
             }
-            .addOnFailureListener { e ->
-                Toast.makeText(context, "Error creating post: ${e.message}", Toast.LENGTH_LONG).show()
-                submitButton.isEnabled = true
-            }
+
+            // Create the post document
+            val rentOutPost = hashMapOf(
+                "name" to nameEditText.text.toString(),
+                "description" to descriptionEditText.text.toString(),
+                "price" to (priceEditText.text.toString().replace(",", ".").toDoubleOrNull() ?: 0.0),
+                "category" to categorySpinner.text.toString(),
+                "images" to imagesMap,
+                "createdAt" to com.google.firebase.Timestamp.now(),
+                "available" to true
+            )
+
+            // Save to Firestore
+            db.collection("RentOutPosts")
+                .add(rentOutPost)
+                .addOnSuccessListener {
+                    Toast.makeText(context, "Post created successfully!", Toast.LENGTH_SHORT).show()
+                    clearForm()
+                    submitButton.isEnabled = true
+                }
+                .addOnFailureListener { e ->
+                    Log.e(TAG, "Error creating post", e)
+                    Toast.makeText(context, "Error creating post: ${e.message}", Toast.LENGTH_LONG).show()
+                    submitButton.isEnabled = true
+                }
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error processing images", e)
+            Toast.makeText(context, "Error processing images: ${e.message}", Toast.LENGTH_LONG).show()
+            submitButton.isEnabled = true
+        }
     }
 
     private fun clearForm() {
