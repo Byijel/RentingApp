@@ -92,32 +92,6 @@
                 android:inputType="none" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/conditionSpinnerLayout"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:hint="@string/rent_out_condition"
-            app:layout_constraintTop_toBottomOf="@id/categorySpinnerLayout">
-
-            <AutoCompleteTextView
-                android:id="@+id/conditionSpinner"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="none" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/locationButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/rent_out_location"
-            app:icon="@android:drawable/ic_menu_mylocation"
-            app:layout_constraintTop_toBottomOf="@id/conditionSpinnerLayout" />
-
         <androidx.cardview.widget.CardView
             android:id="@+id/imageContainer"
             android:layout_width="match_parent"
@@ -125,7 +99,7 @@
             android:layout_marginTop="16dp"
             app:cardCornerRadius="8dp"
             app:cardElevation="2dp"
-            app:layout_constraintTop_toBottomOf="@id/locationButton">
+            app:layout_constraintTop_toBottomOf="@id/categorySpinnerLayout">
 
             <LinearLayout
                 android:layout_width="match_parent"

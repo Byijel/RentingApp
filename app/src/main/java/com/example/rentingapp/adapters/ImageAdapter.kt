@@ -9,10 +9,7 @@ import android.widget.ImageView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.rentingapp.R
 
-class ImageAdapter(
-    private val onDeleteClick: (Int) -> Unit
-) : RecyclerView.Adapter<ImageAdapter.ImageViewHolder>() {
-
+class ImageAdapter(private val onDeleteClick: (Int) -> Unit) : RecyclerView.Adapter<ImageAdapter.ImageViewHolder>() {
     private val images = mutableListOf<Uri>()
 
     fun addImage(uri: Uri) {
@@ -27,6 +24,12 @@ class ImageAdapter(
         }
     }
 
+    fun clearImages() {
+        val size = images.size
+        images.clear()
+        notifyItemRangeRemoved(0, size)
+    }
+
     fun getImages(): List<Uri> = images.toList()
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ImageViewHolder {
@@ -36,7 +39,8 @@ class ImageAdapter(
     }
 
     override fun onBindViewHolder(holder: ImageViewHolder, position: Int) {
-        holder.bind(images[position], position)
+        val uri = images[position]
+        holder.bind(uri)
     }
 
     override fun getItemCount(): Int = images.size
@@ -45,9 +49,11 @@ class ImageAdapter(
         private val imageView: ImageView = itemView.findViewById(R.id.imageView)
         private val deleteButton: ImageButton = itemView.findViewById(R.id.deleteButton)
 
-        fun bind(uri: Uri, position: Int) {
+        fun bind(uri: Uri) {
             imageView.setImageURI(uri)
-            deleteButton.setOnClickListener { onDeleteClick(position) }
+            deleteButton.setOnClickListener {
+                onDeleteClick(adapterPosition)
+            }
         }
     }
 }
