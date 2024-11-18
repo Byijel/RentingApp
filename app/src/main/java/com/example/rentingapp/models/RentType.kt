@@ -1,0 +1,19 @@
+package com.example.rentingapp.models
+
+enum class RentType {
+    ELECTRONICS,
+    TOOLS,
+    VEHICLES,
+    SPORTS_EQUIPMENT,
+    CLOTHING,
+    BOOKS,
+    MUSICAL_INSTRUMENTS,
+    CAMPING_GEAR,
+    PARTY_SUPPLIES,
+    PHOTOGRAPHY_EQUIPMENT,
+    HOME_APPLIANCES,
+    GARDEN_TOOLS,
+    FURNITURE,
+    GAMES_AND_TOYS,
+    OTHER
+}

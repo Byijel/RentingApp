@@ -29,7 +29,7 @@ class ApplianceAdapter(private val appliances: List<RentalItem>) :
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ApplianceViewHolder {
-        val binding = ItemApplianceBinding.inflate(
+        val binding = ItemApplianceBinding  .inflate(
             LayoutInflater.from(parent.context),
             parent,
             false

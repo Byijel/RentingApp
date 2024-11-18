@@ -7,7 +7,7 @@ data class RentalItem(
     val name: String = "",
     val description: String = "",
     val pricePerDay: Double = 0.0,
-    val category: String = "",
+    val rentType: RentType = RentType.OTHER,
     val condition: String = "",
     val location: Address? = null,
     val images: List<Bitmap> = emptyList(),
