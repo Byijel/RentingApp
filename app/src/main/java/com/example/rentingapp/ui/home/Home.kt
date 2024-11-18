@@ -8,7 +8,10 @@ import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.rentingapp.databinding.FragmentHomeBinding
 import com.example.rentingapp.RentalItem
+import com.example.rentingapp.adapters.ApplianceAdapter
 import com.google.firebase.Firebase
+import com.google.firebase.firestore.Blob
+import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.firestore
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -48,7 +51,8 @@ class Home : Fragment() {
     }
 
     private fun loadAppliances() {
-        Firebase.firestore.collection("appliances")
+        Firebase.firestore.collection("RentOutPosts")
+            .orderBy("createdAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
                     return@addSnapshotListener
@@ -58,12 +62,14 @@ class Home : Fragment() {
                 snapshot?.forEach { document ->
                     val appliance = RentalItem(
                         id = document.id,
-                        applianceName = document.getString("applianceName") ?: "",
-                        dailyRate = document.getDouble("dailyRate") ?: 0.0,
+                        applianceName = document.getString("name") ?: "",
+                        dailyRate = document.getDouble("price") ?: 0.0,
                         category = document.getString("category") ?: "",
                         condition = document.getString("condition") ?: "",
                         description = document.getString("description") ?: "",
-                        availability = document.getBoolean("availability") ?: true
+                        availability = document.getBoolean("available") ?: true,
+                        image = (document.get("images") as? Map<String, Any>)?.values?.firstOrNull() as? Blob,
+                        createdAt = document.getTimestamp("createdAt") ?: com.google.firebase.Timestamp.now()
                     )
                     appliances.add(appliance)
                 }

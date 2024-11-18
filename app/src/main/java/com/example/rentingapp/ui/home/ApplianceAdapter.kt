@@ -17,7 +17,7 @@ class ApplianceAdapter(private val appliances: List<RentalItem>) :
             binding.textDailyRate.text = "€${appliance.dailyRate}/day"
             binding.textCategory.text = appliance.category
             binding.textCondition.text = "Condition: ${appliance.condition}"
-            binding.textDescription.text = appliance.description
+            //binding.textde.text = appliance.description
             binding.textAvailability.text = if (appliance.availability) "Available" else "Currently Rented"
             binding.textAvailability.setTextColor(
                 if (appliance.availability)
