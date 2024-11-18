@@ -124,8 +124,20 @@ class RegisterFragment : Fragment() {
     }
 
     private fun isValidPassword(password: String): Boolean {
-        val passwordPattern = "^(?=.*[0-9])(?=.*[A-Z])(?=.*[@#$%^&+=!])(?=\\S+$).{8,}$"
-        return password.matches(passwordPattern.toRegex())
+        val hasNumber = password.any { it.isDigit() }
+        val hasUpperCase = password.any { it.isUpperCase() }
+        val hasSpecialChar = password.any { it in "@#$%^&+=!?" }
+        val isLongEnough = password.length >= 8
+        val hasNoWhitespace = !password.contains("\\s".toRegex())
+        
+        println("Password validation breakdown:")
+        println("Has number: $hasNumber")
+        println("Has uppercase: $hasUpperCase")
+        println("Has special char: $hasSpecialChar")
+        println("Is long enough: $isLongEnough")
+        println("Has no whitespace: $hasNoWhitespace")
+        
+        return hasNumber && hasUpperCase && hasSpecialChar && isLongEnough && hasNoWhitespace
     }
 
     private fun isValidPhone(phone: String): Boolean {
@@ -134,7 +146,7 @@ class RegisterFragment : Fragment() {
     }
 
     private fun isValidZipCode(zipCode: String): Boolean {
-        val zipCodePattern = "^[0-9]{5}(?:-[0-9]{4})?$"
+        val zipCodePattern = "^[0-9]{4}$"
         return zipCode.matches(zipCodePattern.toRegex())
     }
 
@@ -154,7 +166,7 @@ class RegisterFragment : Fragment() {
         }
 
         if (zipCode.isNotEmpty() && !isValidZipCode(zipCode)) {
-            binding.zipCodeLayout.error = "Please enter a valid zip code"
+            binding.zipCodeLayout.error = "Please enter a valid Belgian postal code (4 digits)"
             return
         }
 
