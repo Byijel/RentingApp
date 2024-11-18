@@ -33,4 +33,13 @@
             android:title="@string/menu_rent_out"
             android:iconTint="@color/blue_main" />
     </group>
+
+    <group android:id="@+id/bottom_group"
+        android:checkableBehavior="none">
+        <item
+            android:id="@+id/nav_logout"
+            android:icon="@drawable/ic_logout"
+            android:title="Logout"
+            android:iconTint="@color/blue_main" />
+    </group>
 </menu>
