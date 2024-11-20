@@ -50,7 +50,7 @@ class ApplianceAdapter(private val appliances: List<RentalItem>) :
             textDailyRate.text = formatPrice(appliance.dailyRate)
             textDescription.text = appliance.description
             textCondition.text = appliance.condition
-            textUsername.text = "User123" // Placeholder until user system is implemented
+            textUsername.text = appliance.ownerName
         }
 
         private fun bindAvailabilityBadge(isAvailable: Boolean) {

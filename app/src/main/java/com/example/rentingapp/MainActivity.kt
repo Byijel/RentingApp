@@ -35,6 +35,9 @@ class MainActivity : AppCompatActivity() {
         val drawerLayout: DrawerLayout = binding.drawerLayout
         val navView: NavigationView = binding.navView
 
+        // Disable swipe gesture
+        drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
+
         appBarConfiguration = AppBarConfiguration(
             setOf(R.id.nav_home, R.id.nav_search, R.id.nav_rent_near_me, R.id.nav_my_rents, R.id.nav_rent_out),
             drawerLayout
