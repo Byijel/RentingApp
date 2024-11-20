@@ -13,5 +13,6 @@ data class RentalItem(
     val availability: Boolean = true,
     val image: Blob? = null,
     val createdAt: Timestamp = Timestamp.now(),
-    val ownerName: String = ""
+    val ownerName: String = "",
+    val currentRenter: String? = null
 )
