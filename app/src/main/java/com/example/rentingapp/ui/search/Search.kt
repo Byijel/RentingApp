@@ -10,6 +10,7 @@ import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.TextView
 import androidx.fragment.app.Fragment
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.rentingapp.R
 import com.example.rentingapp.RentalItem
@@ -108,7 +109,12 @@ class Search : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        resultsAdapter = ApplianceAdapter(items)
+        resultsAdapter = ApplianceAdapter(items) { item ->
+            val bundle = Bundle().apply {
+                putParcelable("item", item)
+            }
+            findNavController().navigate(R.id.action_search_to_details, bundle)
+        }
         searchResults.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = resultsAdapter

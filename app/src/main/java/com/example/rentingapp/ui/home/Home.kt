@@ -16,6 +16,9 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.Query
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.firestore
+import androidx.navigation.fragment.findNavController
+import com.example.rentingapp.R
+
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
 private const val ARG_PARAM1 = "param1"
@@ -49,14 +52,24 @@ class Home : Fragment() {
 
     private fun setupRecyclerViews() {
         // Setup Rented Items RecyclerView
-        rentedItemsAdapter = ApplianceAdapter(rentedItems)
+        rentedItemsAdapter = ApplianceAdapter(rentedItems) { item ->
+            val bundle = Bundle().apply {
+                putParcelable("item", item)
+            }
+            findNavController().navigate(R.id.action_home_to_details, bundle)
+        }
         binding.recyclerViewRentedItems.apply {
             layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
             adapter = rentedItemsAdapter
         }
 
         // Setup Rented Out Items RecyclerView
-        rentedOutItemsAdapter = ApplianceAdapter(rentedOutItems)
+        rentedOutItemsAdapter = ApplianceAdapter(rentedOutItems) { item ->
+            val bundle = Bundle().apply {
+                putParcelable("item", item)
+            }
+            findNavController().navigate(R.id.action_home_to_details, bundle)
+        }
         binding.recyclerViewRentedOutItems.apply {
             layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
             adapter = rentedOutItemsAdapter
