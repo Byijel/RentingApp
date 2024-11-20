@@ -17,7 +17,6 @@ class ApplianceAdapter(private val appliances: List<RentalItem>) :
             binding.textDailyRate.text = "€${appliance.dailyRate}/day"
             binding.textCategory.text = appliance.category
             binding.textCondition.text = "Condition: ${appliance.condition}"
-            //binding.textde.text = appliance.description
             binding.textAvailability.text = if (appliance.availability) "Available" else "Currently Rented"
             binding.textAvailability.setTextColor(
                 if (appliance.availability)
@@ -25,11 +24,12 @@ class ApplianceAdapter(private val appliances: List<RentalItem>) :
                 else
                     binding.root.context.getColor(android.R.color.holo_red_dark)
             )
+            binding.textUsername.text = appliance.ownerName // Use owner's full name
         }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ApplianceViewHolder {
-        val binding = ItemApplianceBinding  .inflate(
+        val binding = ItemApplianceBinding.inflate(
             LayoutInflater.from(parent.context),
             parent,
             false

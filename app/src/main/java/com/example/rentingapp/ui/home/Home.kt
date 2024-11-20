@@ -60,20 +60,26 @@ class Home : Fragment() {
 
                 appliances.clear()
                 snapshot?.forEach { document ->
-                    val appliance = RentalItem(
-                        id = document.id,
-                        applianceName = document.getString("name") ?: "",
-                        dailyRate = document.getDouble("price") ?: 0.0,
-                        category = document.getString("category") ?: "",
-                        condition = document.getString("condition") ?: "",
-                        description = document.getString("description") ?: "",
-                        availability = document.getBoolean("available") ?: true,
-                        image = (document.get("images") as? Map<String, Any>)?.values?.firstOrNull() as? Blob,
-                        createdAt = document.getTimestamp("createdAt") ?: com.google.firebase.Timestamp.now()
-                    )
-                    appliances.add(appliance)
+                    val userId = document.getString("userId") ?: return@forEach
+                    Firebase.firestore.collection("users").document(userId).get()
+                        .addOnSuccessListener { userDocument ->
+                            val fullName = "${userDocument.getString("firstName")} ${userDocument.getString("lastName")}"
+                            val appliance = RentalItem(
+                                id = document.id,
+                                applianceName = document.getString("name") ?: "",
+                                dailyRate = document.getDouble("price") ?: 0.0,
+                                category = document.getString("category") ?: "",
+                                condition = document.getString("condition") ?: "",
+                                description = document.getString("description") ?: "",
+                                availability = document.getBoolean("available") ?: true,
+                                image = (document.get("images") as? Map<String, Any>)?.values?.firstOrNull() as? Blob,
+                                createdAt = document.getTimestamp("createdAt") ?: com.google.firebase.Timestamp.now(),
+                                ownerName = fullName
+                            )
+                            appliances.add(appliance)
+                            applianceAdapter.notifyDataSetChanged()
+                        }
                 }
-                applianceAdapter.notifyDataSetChanged()
             }
     }
 

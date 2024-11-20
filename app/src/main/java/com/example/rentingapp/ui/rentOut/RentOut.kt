@@ -24,6 +24,7 @@ import com.example.rentingapp.services.FirestoreImageService
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
 
 class RentOut : Fragment() {
@@ -163,6 +164,9 @@ class RentOut : Fragment() {
                 id to blob
             }
 
+            // Get the current user's ID
+            val userId = Firebase.auth.currentUser?.uid ?: throw Exception("User not logged in")
+
             // Create the post document
             val rentOutPost = hashMapOf(
                 "name" to nameEditText.text.toString(),
@@ -172,7 +176,8 @@ class RentOut : Fragment() {
                 "condition" to conditionSpinner.text.toString(),
                 "images" to imagesMap,
                 "createdAt" to com.google.firebase.Timestamp.now(),
-                "available" to true
+                "available" to true,
+                "userId" to userId // Add user ID to the post
             )
 
             // Save to Firestore
