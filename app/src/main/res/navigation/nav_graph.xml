@@ -28,11 +28,22 @@
         android:id="@+id/nav_home"
         android:name="com.example.rentingapp.ui.home.Home"
         android:label="@string/menu_home"
-        tools:layout="@layout/fragment_home" />
+        tools:layout="@layout/fragment_home">
+        
+        <action
+            android:id="@+id/action_home_to_details"
+            app:destination="@id/detailsFragment" />
+    </fragment>
     <fragment
         android:id="@+id/nav_search"
         android:name="com.example.rentingapp.ui.search.Search"
-        tools:layout="@layout/fragment_search" />
+        android:label="@string/menu_search"
+        tools:layout="@layout/fragment_search">
+        
+        <action
+            android:id="@+id/action_search_to_details"
+            app:destination="@id/detailsFragment" />
+    </fragment>
     <fragment
         android:id="@+id/nav_rent_near_me"
         android:name="com.example.rentingapp.ui.rentNearMe.RentNearMe"
@@ -45,6 +56,25 @@
         android:id="@+id/nav_my_rents"
         android:name="com.example.rentingapp.ui.myRents.MyRents"
         tools:layout="@layout/fragment_my_rents" />
+
+    <fragment
+        android:id="@+id/detailsFragment"
+        android:name="com.example.rentingapp.ui.details.DetailsFragment"
+        android:label="Details">
+        <argument
+            android:name="item"
+            app:argType="com.example.rentingapp.RentalItem" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.example.rentingapp.ui.home.Home"
+        android:label="Home">
+        
+        <action
+            android:id="@+id/action_home_to_details"
+            app:destination="@id/detailsFragment" />
+    </fragment>
 
 </navigation>
 

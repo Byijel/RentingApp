@@ -13,22 +13,12 @@ import com.example.rentingapp.RentalItem
 import java.text.NumberFormat
 import java.util.Locale
 
-class ApplianceAdapter(private val appliances: List<RentalItem>) :
-    RecyclerView.Adapter<ApplianceAdapter.ApplianceViewHolder>() {
+class ApplianceAdapter(
+    private val items: MutableList<RentalItem>,
+    private val onItemClick: (RentalItem) -> Unit = {}
+) : RecyclerView.Adapter<ApplianceAdapter.ApplianceViewHolder>() {
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ApplianceViewHolder {
-        val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_appliance, parent, false)
-        return ApplianceViewHolder(view)
-    }
-
-    override fun onBindViewHolder(holder: ApplianceViewHolder, position: Int) {
-        holder.bind(appliances[position])
-    }
-
-    override fun getItemCount() = appliances.size
-
-    class ApplianceViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+    inner class ApplianceViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         private val imageAppliance: ImageView = view.findViewById(R.id.imageAppliance)
         private val textApplianceName: TextView = view.findViewById(R.id.textApplianceName)
         private val textCategory: TextView = view.findViewById(R.id.textCategory)
@@ -42,6 +32,10 @@ class ApplianceAdapter(private val appliances: List<RentalItem>) :
             bindTextViews(appliance)
             bindAvailabilityBadge(appliance.availability)
             bindImage(appliance)
+            
+            itemView.setOnClickListener {
+                this@ApplianceAdapter.onItemClick(appliance)
+            }
         }
 
         private fun bindTextViews(appliance: RentalItem) {
@@ -84,4 +78,16 @@ class ApplianceAdapter(private val appliances: List<RentalItem>) :
             return "${numberFormat.format(price)}/day"
         }
     }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ApplianceViewHolder {
+        val view = LayoutInflater.from(parent.context)
+            .inflate(R.layout.item_appliance, parent, false)
+        return ApplianceViewHolder(view)
+    }
+
+    override fun onBindViewHolder(holder: ApplianceViewHolder, position: Int) {
+        holder.bind(items[position])
+    }
+
+    override fun getItemCount(): Int = items.size
 }
