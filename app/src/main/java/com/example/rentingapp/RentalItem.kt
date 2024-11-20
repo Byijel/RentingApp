@@ -1,8 +1,12 @@
 package com.example.rentingapp
 
-import com.google.firebase.firestore.Blob
+import android.os.Parcelable
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.Blob
+import kotlinx.parcelize.Parcelize
+import kotlinx.parcelize.RawValue
 
+@Parcelize
 data class RentalItem(
     val id: String = "",
     val applianceName: String = "",
@@ -11,8 +15,8 @@ data class RentalItem(
     val condition: String = "",
     val description: String = "",
     val availability: Boolean = true,
-    val image: Blob? = null,
-    val createdAt: Timestamp = Timestamp.now(),
+    val image: @RawValue Blob? = null,
+    val createdAt: @RawValue Timestamp = Timestamp.now(),
     val ownerName: String = "",
     val currentRenter: String? = null
-)
+) : Parcelable
