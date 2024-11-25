@@ -1,34 +1,52 @@
 package com.example.rentingapp.ui.rentNearMe
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.Color
+import android.location.Location
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import com.example.rentingapp.R
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
 import com.example.rentingapp.databinding.FragmentRentNearMeBinding
-import com.google.android.material.slider.Slider
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
+import com.google.android.material.snackbar.Snackbar
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
-import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polygon
 
 class RentNearMe : Fragment() {
     private var _binding: FragmentRentNearMeBinding? = null
     private val binding get() = _binding!!
-    private lateinit var mapView: MapView
-    private lateinit var locationMarker: Marker
-    private var radiusOverlay: Polygon? = null
     
-    // Test location in Antwerp (Centraal Station)
-    private val currentLocation = GeoPoint(51.2172, 4.4210)
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private var currentLocationMarker: Marker? = null
+    private var radiusOverlay: Polygon? = null
+    private var currentLocation: GeoPoint = GeoPoint(51.2173, 4.4209) // Default: Antwerp Central
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        Configuration.getInstance().userAgentValue = requireActivity().packageName
+    private val locationPermissionRequest = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        when {
+            permissions.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false) -> {
+                // Precise location access granted
+                getCurrentLocation()
+            }
+            permissions.getOrDefault(Manifest.permission.ACCESS_COARSE_LOCATION, false) -> {
+                // Only approximate location access granted
+                getCurrentLocation()
+            }
+            else -> {
+                // No location access granted
+                Snackbar.make(binding.root, "Location permission is required", Snackbar.LENGTH_LONG).show()
+            }
+        }
     }
 
     override fun onCreateView(
@@ -42,79 +60,124 @@ class RentNearMe : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        initializeMap()
+        
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
+        
+        setupMap()
         setupDistanceSlider()
-        updateAddressText()
+        setupLocationButton()
     }
 
-    private fun initializeMap() {
-        mapView = binding.mapView
-        mapView.setTileSource(TileSourceFactory.MAPNIK)
-        mapView.setMultiTouchControls(true)
+    private fun setupMap() {
+        Configuration.getInstance().userAgentValue = requireActivity().packageName
         
-        mapView.controller.apply {
-            setZoom(15.0)  // Closer zoom level
-            setCenter(currentLocation)
+        binding.mapView.apply {
+            setTileSource(TileSourceFactory.MAPNIK)
+            setMultiTouchControls(true)
+            controller.setZoom(15.0)
+            controller.setCenter(currentLocation)
         }
-
-        // Add marker for current location
-        locationMarker = Marker(mapView).apply {
-            position = currentLocation
-            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-            title = "Current Location"
-            icon = resources.getDrawable(R.drawable.ic_location_on_24, null)
-        }
-        mapView.overlays.add(locationMarker)
-
-        // Initial circle overlay
-        updateRadiusOverlay(5.0) // 5 km initial radius
+        
+        updateMapOverlays()
     }
 
     private fun setupDistanceSlider() {
         binding.distanceSlider.addOnChangeListener { slider, value, fromUser ->
-            updateRadiusOverlay(value.toDouble())
-            binding.distanceLabel.text = "Search Radius: ${value.toInt()} km"
+            binding.distanceText.text = "Distance: %.1f km".format(value)
+            updateMapOverlays()
         }
     }
 
-    private fun updateAddressText() {
-        binding.addressText.text = "Current Location: Antwerp Central Station"
+    private fun setupLocationButton() {
+        binding.fabMyLocation.setOnClickListener {
+            checkLocationPermission()
+        }
     }
 
-    private fun updateRadiusOverlay(radiusKm: Double) {
-        // Remove existing overlay
-        radiusOverlay?.let { mapView.overlays.remove(it) }
-
-        // Create circle points
-        val points = ArrayList<GeoPoint>()
-        val radiusMeters = radiusKm * 1000
-        for (angle in 0..360 step 10) {
-            val radian = Math.toRadians(angle.toDouble())
-            val lat = currentLocation.latitude + (radiusMeters / 111320.0) * Math.sin(radian)
-            val lon = currentLocation.longitude + (radiusMeters / (111320.0 * Math.cos(Math.toRadians(currentLocation.latitude)))) * Math.cos(radian)
-            points.add(GeoPoint(lat, lon))
+    private fun checkLocationPermission() {
+        when {
+            ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                getCurrentLocation()
+            }
+            shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION) -> {
+                Snackbar.make(
+                    binding.root,
+                    "Location permission is needed to show your position on the map",
+                    Snackbar.LENGTH_INDEFINITE
+                ).setAction("OK") {
+                    requestLocationPermission()
+                }.show()
+            }
+            else -> {
+                requestLocationPermission()
+            }
         }
+    }
 
-        // Create and add new overlay
-        radiusOverlay = Polygon().also { polygon ->
-            polygon.setPoints(points)
-            polygon.fillColor = Color.argb(50, 0, 0, 255)
-            polygon.outlinePaint.color = Color.BLUE
-            polygon.outlinePaint.strokeWidth = 2.0f
-            mapView.overlays.add(polygon)
+    private fun requestLocationPermission() {
+        locationPermissionRequest.launch(
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+        )
+    }
+
+    private fun getCurrentLocation() {
+        try {
+            fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
+                location?.let {
+                    currentLocation = GeoPoint(it.latitude, it.longitude)
+                    binding.mapView.controller.animateTo(currentLocation)
+                    updateMapOverlays()
+                }
+            }
+        } catch (e: SecurityException) {
+            Snackbar.make(binding.root, "Location permission is required", Snackbar.LENGTH_LONG).show()
+        }
+    }
+
+    private fun updateMapOverlays() {
+        // Clear existing overlays
+        binding.mapView.overlays.clear()
+        
+        // Add location marker
+        currentLocationMarker = Marker(binding.mapView).apply {
+            position = currentLocation
+            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+        }
+        binding.mapView.overlays.add(currentLocationMarker)
+        
+        // Add radius circle
+        val radiusPoints = ArrayList<GeoPoint>()
+        val radius = binding.distanceSlider.value * 1000 // Convert km to meters
+        for (i in 0..360 step 10) {
+            val point = currentLocation.destinationPoint(radius.toDouble(), i.toDouble())
+            radiusPoints.add(point)
         }
         
-        mapView.invalidate()
+        radiusOverlay = Polygon().apply {
+            points = radiusPoints
+            fillColor = Color.argb(50, 0, 0, 255)
+            strokeColor = Color.BLUE
+            strokeWidth = 2f
+        }
+        binding.mapView.overlays.add(radiusOverlay)
+        
+        binding.mapView.invalidate()
     }
 
     override fun onResume() {
         super.onResume()
-        mapView.onResume()
+        binding.mapView.onResume()
     }
 
     override fun onPause() {
         super.onPause()
-        mapView.onPause()
+        binding.mapView.onPause()
     }
 
     override fun onDestroyView() {

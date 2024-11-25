@@ -4,39 +4,49 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp"
-    tools:context=".ui.rentNearMe.RentNearMe">
+    android:orientation="vertical">
 
-    <TextView
-        android:id="@+id/addressText"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Current Location: Loading..."
-        android:textSize="16sp"
-        android:layout_marginBottom="8dp"/>
+        android:orientation="vertical"
+        android:padding="16dp">
 
-    <org.osmdroid.views.MapView
-        android:id="@+id/mapView"
-        android:layout_width="match_parent"
-        android:layout_height="400dp" />
+        <TextView
+            android:id="@+id/distanceText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Distance: 5.0 km"
+            android:textSize="16sp" />
 
-    <TextView
-        android:id="@+id/distanceLabel"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Search Radius: 5 km"
-        android:textSize="16sp"
-        android:layout_marginTop="16dp"/>
+        <com.google.android.material.slider.Slider
+            android:id="@+id/distanceSlider"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:valueFrom="0.5"
+            android:valueTo="30.0"
+            android:value="5.0"
+            android:stepSize="0.5" />
+    </LinearLayout>
 
-    <com.google.android.material.slider.Slider
-        android:id="@+id/distanceSlider"
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:valueFrom="1"
-        android:valueTo="30"
-        android:stepSize="1"
-        android:value="5"/>
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <org.osmdroid.views.MapView
+            android:id="@+id/mapView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fabMyLocation"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="16dp"
+            android:contentDescription="My Location"
+            app:srcCompat="@drawable/ic_my_location" />
+    </FrameLayout>
 
 </LinearLayout>
