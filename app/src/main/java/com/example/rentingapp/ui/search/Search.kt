@@ -17,6 +17,7 @@ import com.example.rentingapp.R
 import com.example.rentingapp.RentalItem
 import com.example.rentingapp.adapters.ApplianceAdapter
 import com.example.rentingapp.models.Category
+import com.example.rentingapp.utils.MapUtils
 import com.google.android.material.slider.Slider
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.auth.FirebaseAuth
@@ -85,7 +86,30 @@ class Search : Fragment() {
         setupDistanceSlider()
         setupSearchInput()
         setupRecyclerView()
-        setupMap()
+        
+        // Setup map using MapUtils
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser != null) {
+            FirebaseFirestore.getInstance().collection("users").document(currentUser.uid)
+                .get()
+                .addOnSuccessListener { document ->
+                    val address = document.get("address") as? Map<*, *>
+                    if (address != null) {
+                        val latitude = address["latitude"] as? Double ?: 0.0
+                        val longitude = address["longitude"] as? Double ?: 0.0
+                        userLocation = GeoPoint(latitude, longitude)
+
+                        // Use MapUtils to setup map and overlays
+                        MapUtils.setupMap(mapView, userLocation, requireContext())
+                        radiusOverlay = MapUtils.updateCircleOverlay(mapView, radiusOverlay, userLocation, distanceSlider.value * 1000f, requireContext())
+
+                        loadRentalLocations()
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Toast.makeText(context, "Failed to load user location: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+        }
     }
 
     private fun initializeViews(view: View) {
@@ -123,7 +147,7 @@ class Search : Fragment() {
                 "%.1fkm".format(value) // Show in kilometers with one decimal place
             }
             distanceLabel.text = "Maximum Distance: $distanceText"
-            updateCircleOverlay()
+            radiusOverlay = MapUtils.updateCircleOverlay(mapView, radiusOverlay, userLocation, distanceSlider.value * 1000f, requireContext())
             performSearch()
         }
     }
@@ -151,88 +175,12 @@ class Search : Fragment() {
         }
     }
 
-    private fun setupMap() {
-        Configuration.getInstance().userAgentValue = requireActivity().packageName
-        
-        mapView.apply {
-            setTileSource(TileSourceFactory.MAPNIK)
-            setMultiTouchControls(true)
-            controller.setZoom(15.0)
-        }
-
-        // Fetch user's address from Firestore
-        val currentUser = FirebaseAuth.getInstance().currentUser
-        if (currentUser != null) {
-            FirebaseFirestore.getInstance().collection("users").document(currentUser.uid)
-                .get()
-                .addOnSuccessListener { document ->
-                    val address = document.get("address") as? Map<*, *>
-                    if (address != null) {
-                        val latitude = address["latitude"] as? Double ?: 0.0
-                        val longitude = address["longitude"] as? Double ?: 0.0
-                        userLocation = GeoPoint(latitude, longitude)
-
-                        // Center map on user's location
-                        mapView.controller.setCenter(userLocation)
-
-                        // Add marker for user's location
-                        val userMarker = Marker(mapView).apply {
-                            position = userLocation
-                            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                            title = "Your Location"
-                        }
-                        mapView.overlays.add(userMarker)
-
-                        // Initial circle overlay
-                        updateCircleOverlay()
-
-                        loadRentalLocations()
-                    }
-                }
-                .addOnFailureListener { e ->
-                    Toast.makeText(context, "Failed to load user location: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-        }
-    }
-
-    private fun updateCircleOverlay() {
-        // Remove existing circle overlay
-        radiusOverlay?.let { mapView.overlays.remove(it) }
-
-        // Create new circle overlay
-        val radiusPoints = ArrayList<GeoPoint>()
-        val radius = distanceSlider.value * 1000 // Convert km to meters
-        for (i in 0..360 step 10) {
-            val point = userLocation.destinationPoint(radius.toDouble(), i.toDouble())
-            radiusPoints.add(point)
-        }
-
-        radiusOverlay = Polygon().apply {
-            points = radiusPoints
-            fillColor = android.graphics.Color.argb(50, 0, 0, 255)
-            strokeColor = R.color.black_text
-            strokeWidth = 2f
-        }
-        mapView.overlays.add(radiusOverlay)
-        mapView.invalidate()
-    }
-
-    private fun clearMapMarkers() {
-        circleCache.values.forEach { mapView.overlays.remove(it) }
-        circleCache.clear()
-        mapView.invalidate()
-    }
-
-    private fun isLocationWithinRadius(location: GeoPoint): Boolean {
-        val distance = userLocation.distanceToAsDouble(location)
-        return distance <= distanceSlider.value * 1000 // Convert km to meters
-    }
-
     private fun loadRentalLocations() {
         // Clear existing markers and items
-        clearMapMarkers()
         items.clear()
         addedItemIds.clear()
+        MapUtils.clearMapMarkers(mapView, circleCache.values)
+        circleCache.clear()
 
         // Fetch rental locations from Firestore and add them to the map
         db.collection("RentOutPosts")
@@ -254,7 +202,7 @@ class Search : Fragment() {
                                 val rentalLocation = GeoPoint(latitude, longitude)
 
                                 // Only add markers and items within the radius
-                                if (isLocationWithinRadius(rentalLocation)) {
+                                if (MapUtils.isLocationWithinRadius(userLocation, rentalLocation, distanceSlider.value * 1000f)) {
                                     // Create rental item
                                     val item = RentalItem(
                                         id = document.id,
@@ -272,7 +220,7 @@ class Search : Fragment() {
 
                                     // Create or retrieve cached circle
                                     val circle = circleCache.getOrPut(document.id) {
-                                        createRandomCircle(rentalLocation)
+                                        MapUtils.createRandomCircle(rentalLocation)
                                     }
 
                                     // Add circle to map
@@ -297,28 +245,6 @@ class Search : Fragment() {
             }
     }
 
-    private fun createRandomCircle(center: GeoPoint): Polygon {
-        val random = Random()
-        val radius = 100.0 + random.nextDouble() * 50.0 // Random radius between 100m and 150m
-        val offsetLat = random.nextDouble() * 0.001 - 0.0005 // Random offset within ~55m
-        val offsetLon = random.nextDouble() * 0.001 - 0.0005
-
-        val offsetCenter = GeoPoint(center.latitude + offsetLat, center.longitude + offsetLon)
-
-        val points = ArrayList<GeoPoint>()
-        for (i in 0..360 step 10) {
-            val point = offsetCenter.destinationPoint(radius, i.toDouble())
-            points.add(point)
-        }
-
-        return Polygon().apply {
-            this.points = points
-            this.fillColor = android.graphics.Color.argb(80, 255, 165, 0) // Semi-transparent orange
-            this.strokeColor = android.graphics.Color.rgb(255, 165, 0) // Solid orange
-            this.strokeWidth = 2f
-        }
-    }
-
     private fun performSearch() {
         val searchText = searchInput.text?.toString()?.lowercase() ?: ""
         val selectedCategory = categorySpinner.text?.toString()
@@ -326,7 +252,8 @@ class Search : Fragment() {
         // Clear existing items and markers
         items.clear()
         addedItemIds.clear()
-        clearMapMarkers()
+        MapUtils.clearMapMarkers(mapView, circleCache.values)
+        circleCache.clear()
 
         // Start with the base query
         var query: Query = db.collection("RentOutPosts")
@@ -359,7 +286,7 @@ class Search : Fragment() {
                                     val rentalLocation = GeoPoint(latitude, longitude)
 
                                     // Only add items within the radius
-                                    if (isLocationWithinRadius(rentalLocation)) {
+                                    if (MapUtils.isLocationWithinRadius(userLocation, rentalLocation, distanceSlider.value * 1000f)) {
                                         // Check if item is already added
                                         if (!addedItemIds.contains(document.id)) {
                                             val fullName = "${userDocument.getString("firstName")} ${userDocument.getString("lastName")}";
@@ -380,7 +307,7 @@ class Search : Fragment() {
 
                                             // Create or retrieve cached circle
                                             val circle = circleCache.getOrPut(document.id) {
-                                                createRandomCircle(rentalLocation)
+                                                MapUtils.createRandomCircle(rentalLocation)
                                             }
 
                                             // Add circle to map
