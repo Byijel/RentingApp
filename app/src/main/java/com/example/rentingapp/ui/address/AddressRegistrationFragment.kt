@@ -10,13 +10,20 @@ import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.navigation.fragment.findNavController
+import com.example.rentingapp.R
 import com.example.rentingapp.databinding.AddressRegistrationBinding
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.material.snackbar.Snackbar
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.ktx.Firebase
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -29,6 +36,8 @@ class AddressRegistrationFragment : Fragment() {
     private val binding get() = _binding!!
     
     private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private lateinit var auth: FirebaseAuth
+    private lateinit var db: FirebaseFirestore
     private var currentLocationMarker: Marker? = null
     private var currentLocation: GeoPoint = GeoPoint(51.2194, 4.4025) // Default: Antwerp
     private var isAddressValidated = false
@@ -60,13 +69,40 @@ class AddressRegistrationFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         
+        auth = Firebase.auth
+        db = FirebaseFirestore.getInstance()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
+
+        // Check if user has address already
+        checkUserAddress()
         
         setupMapView()
         setupTextWatchers()
         setupSearchButton()
         setupRegisterButton()
         checkLocationPermission()
+    }
+
+    private fun checkUserAddress() {
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            findNavController().navigate(R.id.loginFragment)
+            return
+        }
+
+        db.collection("users").document(currentUser.uid).get()
+            .addOnSuccessListener { document ->
+                val address = document.get("address") as? Map<*, *>
+                if (address != null && 
+                    !address["city"].toString().isNullOrEmpty() && 
+                    !address["street"].toString().isNullOrEmpty()) {
+                    // User has address, navigate to home
+                    findNavController().navigate(R.id.nav_home)
+                }
+            }
+            .addOnFailureListener {
+                Toast.makeText(context, "Error checking address: ${it.message}", Toast.LENGTH_SHORT).show()
+            }
     }
 
     private fun setupMapView() {
@@ -237,8 +273,12 @@ class AddressRegistrationFragment : Fragment() {
     private fun setupRegisterButton() {
         binding.buttonRegisterAddress.setOnClickListener {
             if (validateFields() && isAddressValidated) {
-                // TODO: Implement address registration
-                // You can access the validated address and coordinates here
+                val currentUser = auth.currentUser
+                if (currentUser == null) {
+                    findNavController().navigate(R.id.loginFragment)
+                    return@setOnClickListener
+                }
+
                 val address = with(binding) {
                     mapOf(
                         "country" to editTextCountry.text.toString(),
@@ -250,8 +290,18 @@ class AddressRegistrationFragment : Fragment() {
                         "longitude" to currentLocation.longitude
                     )
                 }
-                // Handle the address registration
-                Snackbar.make(binding.root, "Address registered successfully!", Snackbar.LENGTH_SHORT).show()
+
+                // Update user's address in Firestore
+                db.collection("users").document(currentUser.uid)
+                    .update("address", address)
+                    .addOnSuccessListener {
+                        Toast.makeText(context, "Address registered successfully!", Toast.LENGTH_SHORT).show()
+                        findNavController().navigate(R.id.nav_home)
+                    }
+                    .addOnFailureListener { e ->
+                        Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                        binding.buttonRegisterAddress.isEnabled = true
+                    }
             }
         }
     }

@@ -21,6 +21,7 @@ class RegisterFragment : Fragment() {
 
     private var _binding: FragmentRegisterBinding? = null
     private val binding get() = _binding!!
+    
     private lateinit var auth: FirebaseAuth
     private lateinit var db: FirebaseFirestore
 
@@ -56,7 +57,6 @@ class RegisterFragment : Fragment() {
         binding.firstNameInput.addTextChangedListener(createTextWatcher(binding.firstNameLayout))
         binding.lastNameInput.addTextChangedListener(createTextWatcher(binding.lastNameLayout))
         binding.phoneInput.addTextChangedListener(createTextWatcher(binding.phoneLayout))
-        binding.zipCodeInput.addTextChangedListener(createTextWatcher(binding.zipCodeLayout))
 
         binding.registerButton.setOnClickListener {
             val email = binding.emailInput.text.toString()
@@ -64,15 +64,58 @@ class RegisterFragment : Fragment() {
             val firstName = binding.firstNameInput.text.toString()
             val lastName = binding.lastNameInput.text.toString()
             val phone = binding.phoneInput.text.toString()
-            val city = binding.cityInput.text.toString()
-            val zipCode = binding.zipCodeInput.text.toString()
-            val street = binding.streetInput.text.toString()
-            val number = binding.numberInput.text.toString()
 
             if (validateInputs(email, password, firstName, lastName)) {
-                registerUser(email, password, firstName, lastName, phone, city, zipCode, street, number)
+                registerUser(email, password, firstName, lastName, phone)
             }
         }
+    }
+
+    private fun registerUser(
+        email: String, password: String, firstName: String, lastName: String,
+        phone: String
+    ) {
+        // Validate all fields
+        if (!validateInputs(email, password, firstName, lastName)) {
+            return
+        }
+
+        // Additional validations for optional fields if they're not empty
+        if (phone.isNotEmpty() && !isValidPhone(phone)) {
+            binding.phoneLayout.error = "Please enter a valid phone number"
+            return
+        }
+
+        binding.registerButton.isEnabled = false // Prevent multiple clicks
+
+        auth.createUserWithEmailAndPassword(email, password)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    // Save additional user information to Firestore
+                    val user = hashMapOf(
+                        "firstName" to firstName,
+                        "lastName" to lastName,
+                        "email" to email,
+                        "phone" to phone
+                    )
+
+                    db.collection("users")
+                        .document(auth.currentUser!!.uid)
+                        .set(user)
+                        .addOnSuccessListener {
+                            Toast.makeText(context, "Registration successful!", Toast.LENGTH_SHORT).show()
+                            // Navigate to address registration after successful registration
+                            findNavController().navigate(R.id.nav_address_registration)
+                        }
+                        .addOnFailureListener { e ->
+                            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                            binding.registerButton.isEnabled = true
+                        }
+                } else {
+                    Toast.makeText(context, "Registration failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                    binding.registerButton.isEnabled = true
+                }
+            }
     }
 
     private fun validateInputs(email: String, password: String, firstName: String, lastName: String): Boolean {
@@ -84,7 +127,6 @@ class RegisterFragment : Fragment() {
         binding.firstNameLayout.error = null
         binding.lastNameLayout.error = null
         binding.phoneLayout.error = null
-        binding.zipCodeLayout.error = null
 
         // Email validation
         if (!isValidEmail(email)) {
@@ -130,81 +172,12 @@ class RegisterFragment : Fragment() {
         val isLongEnough = password.length >= 8
         val hasNoWhitespace = !password.contains("\\s".toRegex())
         
-        println("Password validation breakdown:")
-        println("Has number: $hasNumber")
-        println("Has uppercase: $hasUpperCase")
-        println("Has special char: $hasSpecialChar")
-        println("Is long enough: $isLongEnough")
-        println("Has no whitespace: $hasNoWhitespace")
-        
         return hasNumber && hasUpperCase && hasSpecialChar && isLongEnough && hasNoWhitespace
     }
 
     private fun isValidPhone(phone: String): Boolean {
         val phonePattern = "^[+]?[0-9]{10,13}$"
         return phone.matches(phonePattern.toRegex())
-    }
-
-    private fun isValidZipCode(zipCode: String): Boolean {
-        val zipCodePattern = "^[0-9]{4}$"
-        return zipCode.matches(zipCodePattern.toRegex())
-    }
-
-    private fun registerUser(
-        email: String, password: String, firstName: String, lastName: String,
-        phone: String, city: String, zipCode: String, street: String, number: String
-    ) {
-        // Validate all fields
-        if (!validateInputs(email, password, firstName, lastName)) {
-            return
-        }
-
-        // Additional validations for optional fields if they're not empty
-        if (phone.isNotEmpty() && !isValidPhone(phone)) {
-            binding.phoneLayout.error = "Please enter a valid phone number"
-            return
-        }
-
-        if (zipCode.isNotEmpty() && !isValidZipCode(zipCode)) {
-            binding.zipCodeLayout.error = "Please enter a valid Belgian postal code (4 digits)"
-            return
-        }
-
-        binding.registerButton.isEnabled = false // Prevent multiple clicks
-
-        auth.createUserWithEmailAndPassword(email, password)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    // Save additional user information to Firestore
-                    val user = hashMapOf(
-                        "firstName" to firstName,
-                        "lastName" to lastName,
-                        "email" to email,
-                        "phone" to phone,
-                        "address" to hashMapOf(
-                            "city" to city,
-                            "zipCode" to zipCode,
-                            "street" to street,
-                            "number" to number
-                        )
-                    )
-
-                    db.collection("users")
-                        .document(auth.currentUser!!.uid)
-                        .set(user)
-                        .addOnSuccessListener {
-                            Toast.makeText(context, "Registration successful!", Toast.LENGTH_SHORT).show()
-                            findNavController().navigate(R.id.nav_home)
-                        }
-                        .addOnFailureListener { e ->
-                            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                            binding.registerButton.isEnabled = true
-                        }
-                } else {
-                    Toast.makeText(context, "Registration failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
-                    binding.registerButton.isEnabled = true
-                }
-            }
     }
 
     override fun onDestroyView() {
