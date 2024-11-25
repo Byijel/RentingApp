@@ -63,4 +63,7 @@ dependencies {
     implementation("com.google.firebase:firebase-auth-ktx:22.3.1")
     implementation("androidx.navigation:navigation-fragment-ktx:2.7.7")
     implementation("androidx.navigation:navigation-ui-ktx:2.7.7")
+    
+    // OSMDroid for maps
+    implementation("org.osmdroid:osmdroid-android:6.1.18")
 }
