@@ -19,36 +19,34 @@
         android:layout_height="wrap_content"
         android:hint="Country" />
 
-    <EditText
-        android:id="@+id/editTextCity"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="City" />
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp">
 
         <EditText
-            android:id="@+id/editTextState"
+            android:id="@+id/editTextCity"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="0.6"
-            android:hint="State" />
+            android:hint="City" />
 
         <EditText
             android:id="@+id/editTextZipCode"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="0.4"
-            android:hint="Zip Code" />
+            android:layout_marginStart="8dp"
+            android:hint="Zip Code"
+            android:inputType="number" />
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp">
 
         <EditText
             android:id="@+id/editTextStreet"
@@ -62,13 +60,31 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="0.4"
+            android:layout_marginStart="8dp"
             android:hint="Number" />
     </LinearLayout>
+
+    <Button
+        android:id="@+id/buttonSearch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Search"
+        android:enabled="false"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp" />
 
     <org.osmdroid.views.MapView
         android:id="@+id/mapView"
         android:layout_width="match_parent"
-        android:layout_height="200dp"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <Button
+        android:id="@+id/buttonRegisterAddress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Register my address"
+        android:enabled="false"
         android:layout_marginTop="16dp" />
 
 </LinearLayout>
