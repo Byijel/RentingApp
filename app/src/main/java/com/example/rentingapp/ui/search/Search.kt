@@ -210,7 +210,7 @@ class Search : Fragment() {
         radiusOverlay = Polygon().apply {
             points = radiusPoints
             fillColor = android.graphics.Color.argb(50, 0, 0, 255)
-            strokeColor = android.graphics.Color.BLUE
+            strokeColor = R.color.black_text
             strokeWidth = 2f
         }
         mapView.overlays.add(radiusOverlay)
@@ -313,7 +313,7 @@ class Search : Fragment() {
 
         return Polygon().apply {
             this.points = points
-            this.fillColor = android.graphics.Color.argb(50, 255, 165, 0) // Semi-transparent orange
+            this.fillColor = android.graphics.Color.argb(80, 255, 165, 0) // Semi-transparent orange
             this.strokeColor = android.graphics.Color.rgb(255, 165, 0) // Solid orange
             this.strokeWidth = 2f
         }
