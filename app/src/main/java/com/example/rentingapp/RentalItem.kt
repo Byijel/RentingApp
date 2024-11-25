@@ -9,7 +9,7 @@ import kotlinx.parcelize.RawValue
 @Parcelize
 data class RentalItem(
     val id: String = "",
-    val applianceName: String = "",
+    var applianceName: String = "",
     val dailyRate: Double = 0.0,
     val category: String = "",
     val condition: String = "",
@@ -17,6 +17,6 @@ data class RentalItem(
     val availability: Boolean = true,
     val image: @RawValue Blob? = null,
     val createdAt: @RawValue Timestamp = Timestamp.now(),
-    val ownerName: String = "",
+    var ownerName: String = "",
     val currentRenter: String? = null
 ) : Parcelable

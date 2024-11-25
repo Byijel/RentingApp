@@ -57,6 +57,8 @@ class Search : Fragment() {
     
     private val db = FirebaseFirestore.getInstance()
     private val items = mutableListOf<RentalItem>()
+    private val addedItemIds = HashSet<String>()
+    private val markers = mutableListOf<Marker>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -214,14 +216,34 @@ class Search : Fragment() {
         mapView.invalidate()
     }
 
+    private fun clearMapMarkers() {
+        markers.forEach { mapView.overlays.remove(it) }
+        markers.clear()
+        mapView.invalidate()
+    }
+
+    private fun isLocationWithinRadius(location: GeoPoint): Boolean {
+        val distance = userLocation.distanceToAsDouble(location)
+        return distance <= distanceSlider.value * 1000 // Convert km to meters
+    }
+
     private fun loadRentalLocations() {
+        // Clear existing markers and items
+        clearMapMarkers()
+        items.clear()
+        addedItemIds.clear()
+
         // Fetch rental locations from Firestore and add them to the map
-        FirebaseFirestore.getInstance().collection("RentOutPosts")
+        db.collection("RentOutPosts")
             .get()
             .addOnSuccessListener { documents ->
+                var itemNumber = 1
                 for (document in documents) {
+                    // Skip if we've already added this item
+                    if (addedItemIds.contains(document.id)) continue
+
                     val userId = document.getString("userId") ?: continue
-                    FirebaseFirestore.getInstance().collection("users").document(userId)
+                    db.collection("users").document(userId)
                         .get()
                         .addOnSuccessListener { userDoc ->
                             val address = userDoc.get("address") as? Map<*, *>
@@ -230,15 +252,44 @@ class Search : Fragment() {
                                 val longitude = address["longitude"] as? Double ?: 0.0
                                 val rentalLocation = GeoPoint(latitude, longitude)
 
-                                // Add marker for rental location
-                                val rentalMarker = Marker(mapView).apply {
-                                    position = rentalLocation
-                                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                                    title = document.getString("name") ?: "Rental"
-                                    icon = resources.getDrawable(R.drawable.ic_location_on_24, null)
+                                // Only add markers and items within the radius
+                                if (isLocationWithinRadius(rentalLocation)) {
+                                    // Create rental item
+                                    val item = RentalItem(
+                                        id = document.id,
+                                        applianceName = "#$itemNumber ${document.getString("name") ?: ""}",
+                                        dailyRate = document.getDouble("price") ?: 0.0,
+                                        category = document.getString("category") ?: "",
+                                        condition = document.getString("condition") ?: "",
+                                        description = document.getString("description") ?: "",
+                                        availability = document.getBoolean("available") ?: true,
+                                        ownerName = "${userDoc.getString("firstName")} ${userDoc.getString("lastName")}",
+                                        image = document.get("images")?.let { images ->
+                                            (images as? Map<*, *>)?.values?.firstOrNull() as? com.google.firebase.firestore.Blob
+                                        }
+                                    )
+
+                                    // Add marker for rental location
+                                    val rentalMarker = Marker(mapView).apply {
+                                        position = rentalLocation
+                                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                                        title = "#$itemNumber"
+                                        snippet = "${document.getString("name")} - €${document.getDouble("price")}/day"
+                                        icon = resources.getDrawable(R.drawable.ic_location_on_24, null)
+                                    }
+                                    
+                                    // Add to tracking collections
+                                    markers.add(rentalMarker)
+                                    mapView.overlays.add(rentalMarker)
+                                    items.add(item)
+                                    addedItemIds.add(document.id)
+                                    itemNumber++
+                                    
+                                    // Update UI
+                                    items.sortBy { it.applianceName }
+                                    resultsAdapter.notifyDataSetChanged()
+                                    mapView.invalidate()
                                 }
-                                mapView.overlays.add(rentalMarker)
-                                mapView.invalidate()
                             }
                         }
                 }
@@ -251,7 +302,11 @@ class Search : Fragment() {
     private fun performSearch() {
         val searchText = searchInput.text?.toString()?.lowercase() ?: ""
         val selectedCategory = categorySpinner.text?.toString()
-        val maxDistance = distanceSlider.value
+
+        // Clear existing items and markers
+        items.clear()
+        addedItemIds.clear()
+        clearMapMarkers()
 
         // Start with the base query
         var query: Query = db.collection("RentOutPosts")
@@ -261,94 +316,75 @@ class Search : Fragment() {
             query = query.whereEqualTo("category", selectedCategory)
         }
 
-        // Clear existing items
-        items.clear()
-        resultsAdapter.notifyDataSetChanged()
-
         // Execute the query
         query.get().addOnSuccessListener { documents ->
-            // Count how many documents we need to process
-            val totalDocuments = documents.count { doc ->
-                val name = doc.getString("name")?.lowercase() ?: ""
-                val description = doc.getString("description")?.lowercase() ?: ""
-                (searchText.isEmpty() || 
-                    name.contains(searchText) || 
-                    description.contains(searchText)) &&
-                    isWithinDistance(doc, maxDistance)
-            }
-            
-            if (totalDocuments == 0) {
-                // No results found
-                resultsAdapter.notifyDataSetChanged()
-                return@addOnSuccessListener
-            }
-
             // Process each document
             documents.forEach { document ->
                 val name = document.getString("name")?.lowercase() ?: ""
                 val description = document.getString("description")?.lowercase() ?: ""
-                
+
                 if ((searchText.isEmpty() || 
                     name.contains(searchText) || 
-                    description.contains(searchText)) &&
-                    isWithinDistance(document, maxDistance)) {
-                    
+                    description.contains(searchText))) {
+
                     val userId = document.getString("userId")
                     if (userId != null) {
                         db.collection("users").document(userId)
                             .get()
                             .addOnSuccessListener { userDocument ->
-                                val fullName = "${userDocument.getString("firstName")} ${userDocument.getString("lastName")}"
-                                
-                                val item = RentalItem(
-                                    id = document.id,
-                                    applianceName = document.getString("name") ?: "",
-                                    dailyRate = document.getDouble("price") ?: 0.0,
-                                    category = document.getString("category") ?: "",
-                                    condition = document.getString("condition") ?: "",
-                                    description = document.getString("description") ?: "",
-                                    availability = document.getBoolean("available") ?: true,
-                                    ownerName = fullName,
-                                    image = document.get("images")?.let { images ->
-                                        (images as? Map<*, *>)?.values?.firstOrNull() as? com.google.firebase.firestore.Blob
+                                val address = userDocument.get("address") as? Map<*, *>
+                                if (address != null) {
+                                    val latitude = address["latitude"] as? Double ?: 0.0
+                                    val longitude = address["longitude"] as? Double ?: 0.0
+                                    val rentalLocation = GeoPoint(latitude, longitude)
+
+                                    // Only add items within the radius
+                                    if (isLocationWithinRadius(rentalLocation)) {
+                                        // Check if item is already added
+                                        if (!addedItemIds.contains(document.id)) {
+                                            val fullName = "${userDocument.getString("firstName")} ${userDocument.getString("lastName")}";
+
+                                            val item = RentalItem(
+                                                id = document.id,
+                                                applianceName = document.getString("name") ?: "",
+                                                dailyRate = document.getDouble("price") ?: 0.0,
+                                                category = document.getString("category") ?: "",
+                                                condition = document.getString("condition") ?: "",
+                                                description = document.getString("description") ?: "",
+                                                availability = document.getBoolean("available") ?: true,
+                                                ownerName = fullName,
+                                                image = document.get("images")?.let { images ->
+                                                    (images as? Map<*, *>)?.values?.firstOrNull() as? com.google.firebase.firestore.Blob
+                                                }
+                                            )
+
+                                            // Add marker for rental location
+                                            val rentalMarker = Marker(mapView).apply {
+                                                position = rentalLocation
+                                                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                                                title = document.getString("name") ?: "Rental"
+                                                snippet = "€${document.getDouble("price")}/day"
+                                                icon = resources.getDrawable(R.drawable.ic_location_on_24, null)
+                                            }
+
+                                            // Add to tracking collections
+                                            markers.add(rentalMarker)
+                                            mapView.overlays.add(rentalMarker)
+                                            items.add(item)
+                                            addedItemIds.add(document.id)
+
+                                            // Update UI
+                                            items.sortBy { it.applianceName }
+                                            resultsAdapter.notifyDataSetChanged()
+                                            mapView.invalidate()
+                                        }
                                     }
-                                )
-                                
-                                // Add item and sort the list
-                                items.add(item)
-                                items.sortBy { it.applianceName }
-                                resultsAdapter.notifyDataSetChanged()
-                            }
-                            .addOnFailureListener { exception ->
-                                // Handle the error case by still adding the item but with empty owner
-                                val item = RentalItem(
-                                    id = document.id,
-                                    applianceName = document.getString("name") ?: "",
-                                    dailyRate = document.getDouble("price") ?: 0.0,
-                                    category = document.getString("category") ?: "",
-                                    condition = document.getString("condition") ?: "",
-                                    description = document.getString("description") ?: "",
-                                    availability = document.getBoolean("available") ?: true,
-                                    ownerName = "Unknown",
-                                    image = document.get("images")?.let { images ->
-                                        (images as? Map<*, *>)?.values?.firstOrNull() as? com.google.firebase.firestore.Blob
-                                    }
-                                )
-                                items.add(item)
-                                items.sortBy { it.applianceName }
-                                resultsAdapter.notifyDataSetChanged()
+                                }
                             }
                     }
                 }
             }
         }
-    }
-
-    // Placeholder function for distance calculation
-    private fun isWithinDistance(document: com.google.firebase.firestore.DocumentSnapshot, maxDistance: Float): Boolean {
-        // TODO: Implement actual distance calculation when location data is available
-        // For now, return true to show all results
-        return true
     }
 
     companion object {
