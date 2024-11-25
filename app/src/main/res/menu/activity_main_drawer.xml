@@ -32,6 +32,12 @@
             android:icon="@drawable/ic_add_plus"
             android:title="@string/menu_rent_out"
             android:iconTint="@color/blue_main" />
+
+        <item
+            android:id="@+id/nav_address_registration"
+            android:icon="@drawable/ic_map_map"
+            android:title="(test) Address Registration"
+            android:iconTint="@color/blue_main" />
     </group>
 
     <group android:id="@+id/bottom_group"

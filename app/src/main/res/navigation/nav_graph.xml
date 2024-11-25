@@ -76,5 +76,10 @@
             app:destination="@id/detailsFragment" />
     </fragment>
 
-</navigation>
+    <fragment
+        android:id="@+id/nav_address_registration"
+        android:name="com.example.rentingapp.ui.address.AddressRegistrationFragment"
+        android:label="Address Registration"
+        tools:layout="@layout/address_registration" />
 
+</navigation>
