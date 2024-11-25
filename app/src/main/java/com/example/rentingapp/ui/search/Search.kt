@@ -29,6 +29,7 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polygon
 import kotlin.math.round
+import java.util.Random
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -58,7 +59,7 @@ class Search : Fragment() {
     private val db = FirebaseFirestore.getInstance()
     private val items = mutableListOf<RentalItem>()
     private val addedItemIds = HashSet<String>()
-    private val markers = mutableListOf<Marker>()
+    private val circleCache = mutableMapOf<String, Polygon>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -217,8 +218,8 @@ class Search : Fragment() {
     }
 
     private fun clearMapMarkers() {
-        markers.forEach { mapView.overlays.remove(it) }
-        markers.clear()
+        circleCache.values.forEach { mapView.overlays.remove(it) }
+        circleCache.clear()
         mapView.invalidate()
     }
 
@@ -269,22 +270,19 @@ class Search : Fragment() {
                                         }
                                     )
 
-                                    // Add marker for rental location
-                                    val rentalMarker = Marker(mapView).apply {
-                                        position = rentalLocation
-                                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                                        title = "#$itemNumber"
-                                        snippet = "${document.getString("name")} - €${document.getDouble("price")}/day"
-                                        icon = resources.getDrawable(R.drawable.ic_location_on_24, null)
+                                    // Create or retrieve cached circle
+                                    val circle = circleCache.getOrPut(document.id) {
+                                        createRandomCircle(rentalLocation)
                                     }
-                                    
+
+                                    // Add circle to map
+                                    mapView.overlays.add(circle)
+
                                     // Add to tracking collections
-                                    markers.add(rentalMarker)
-                                    mapView.overlays.add(rentalMarker)
                                     items.add(item)
                                     addedItemIds.add(document.id)
                                     itemNumber++
-                                    
+
                                     // Update UI
                                     items.sortBy { it.applianceName }
                                     resultsAdapter.notifyDataSetChanged()
@@ -297,6 +295,28 @@ class Search : Fragment() {
             .addOnFailureListener { e ->
                 Toast.makeText(context, "Failed to load rental locations: ${e.message}", Toast.LENGTH_SHORT).show()
             }
+    }
+
+    private fun createRandomCircle(center: GeoPoint): Polygon {
+        val random = Random()
+        val radius = 100.0 + random.nextDouble() * 50.0 // Random radius between 100m and 150m
+        val offsetLat = random.nextDouble() * 0.001 - 0.0005 // Random offset within ~55m
+        val offsetLon = random.nextDouble() * 0.001 - 0.0005
+
+        val offsetCenter = GeoPoint(center.latitude + offsetLat, center.longitude + offsetLon)
+
+        val points = ArrayList<GeoPoint>()
+        for (i in 0..360 step 10) {
+            val point = offsetCenter.destinationPoint(radius, i.toDouble())
+            points.add(point)
+        }
+
+        return Polygon().apply {
+            this.points = points
+            this.fillColor = android.graphics.Color.argb(50, 255, 165, 0) // Semi-transparent orange
+            this.strokeColor = android.graphics.Color.rgb(255, 165, 0) // Solid orange
+            this.strokeWidth = 2f
+        }
     }
 
     private fun performSearch() {
@@ -358,18 +378,15 @@ class Search : Fragment() {
                                                 }
                                             )
 
-                                            // Add marker for rental location
-                                            val rentalMarker = Marker(mapView).apply {
-                                                position = rentalLocation
-                                                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                                                title = document.getString("name") ?: "Rental"
-                                                snippet = "€${document.getDouble("price")}/day"
-                                                icon = resources.getDrawable(R.drawable.ic_location_on_24, null)
+                                            // Create or retrieve cached circle
+                                            val circle = circleCache.getOrPut(document.id) {
+                                                createRandomCircle(rentalLocation)
                                             }
 
+                                            // Add circle to map
+                                            mapView.overlays.add(circle)
+
                                             // Add to tracking collections
-                                            markers.add(rentalMarker)
-                                            mapView.overlays.add(rentalMarker)
                                             items.add(item)
                                             addedItemIds.add(document.id)
 
