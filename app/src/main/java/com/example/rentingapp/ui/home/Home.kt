@@ -7,13 +7,12 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.rentingapp.databinding.FragmentHomeBinding
-import com.example.rentingapp.RentalItem
+import com.example.rentingapp.models.RentalItem
 import com.example.rentingapp.adapters.ApplianceAdapter
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.Blob
 import com.google.firebase.firestore.DocumentSnapshot
-import com.google.firebase.firestore.Query
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.firestore
 import androidx.navigation.fragment.findNavController

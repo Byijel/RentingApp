@@ -1,4 +1,4 @@
-package com.example.rentingapp
+package com.example.rentingapp.models
 
 import android.os.Parcelable
 import com.google.firebase.Timestamp

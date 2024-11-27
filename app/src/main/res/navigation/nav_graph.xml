@@ -63,7 +63,7 @@
         android:label="Details">
         <argument
             android:name="item"
-            app:argType="com.example.rentingapp.RentalItem" />
+            app:argType="com.example.rentingapp.models.RentalItem" />
     </fragment>
 
     <fragment

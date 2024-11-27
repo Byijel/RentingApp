@@ -14,23 +14,19 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.rentingapp.R
-import com.example.rentingapp.RentalItem
+import com.example.rentingapp.models.RentalItem
 import com.example.rentingapp.adapters.ApplianceAdapter
 import com.example.rentingapp.models.Category
 import com.example.rentingapp.utils.MapUtils
 import com.google.android.material.slider.Slider
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.Blob
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
-import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polygon
-import kotlin.math.round
-import java.util.Random
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -214,7 +210,7 @@ class Search : Fragment() {
                                         availability = document.getBoolean("available") ?: true,
                                         ownerName = "${userDoc.getString("firstName")} ${userDoc.getString("lastName")}",
                                         image = document.get("images")?.let { images ->
-                                            (images as? Map<*, *>)?.values?.firstOrNull() as? com.google.firebase.firestore.Blob
+                                            (images as? Map<*, *>)?.values?.firstOrNull() as? Blob
                                         }
                                     )
 
@@ -301,7 +297,7 @@ class Search : Fragment() {
                                                 availability = document.getBoolean("available") ?: true,
                                                 ownerName = fullName,
                                                 image = document.get("images")?.let { images ->
-                                                    (images as? Map<*, *>)?.values?.firstOrNull() as? com.google.firebase.firestore.Blob
+                                                    (images as? Map<*, *>)?.values?.firstOrNull() as? Blob
                                                 }
                                             )
 

@@ -2,6 +2,7 @@ package com.example.rentingapp.utils
 
 import android.content.Context
 import androidx.core.content.ContextCompat
+import com.example.rentingapp.R
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -93,7 +94,7 @@ object MapUtils {
         radiusOverlay?.let { mapView.overlays.remove(it) }
 
         // Create new circle overlay
-        val newOverlay = createCircleOverlay(context, userLocation, radius, R.color.blue)
+        val newOverlay = createCircleOverlay(context, userLocation, radius, R.color.blue_main_20)
         mapView.overlays.add(newOverlay)
         mapView.invalidate()
 

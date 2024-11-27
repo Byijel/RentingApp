@@ -9,7 +9,7 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.example.rentingapp.R
-import com.example.rentingapp.RentalItem
+import com.example.rentingapp.models.RentalItem
 import java.text.NumberFormat
 import java.util.Locale
 
