@@ -53,6 +53,14 @@ class DetailsFragment : Fragment() {
             itemCondition.text = args.item.condition
             ownerName.text = "Owner: ${args.item.ownerName}"
             
+            // Hide calendar and rent button if item is unavailable
+            if (!args.item.availability) {
+                calendar.visibility = View.GONE
+                rentButton.visibility = View.GONE
+                selectedDates.visibility = View.GONE
+                totalPrice.visibility = View.GONE
+            }
+            
             // Load image
             args.item.image?.let { blob ->
                 try {
@@ -132,23 +140,34 @@ class DetailsFragment : Fragment() {
     private fun setupRentButton() {
         binding.rentButton.setOnClickListener {
             if (selectedStartDate == null || selectedEndDate == null) {
-                Toast.makeText(context, "Please select start and end dates", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Please select both start and end dates", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
             val rental = hashMapOf(
                 "itemId" to args.item.id,
-                "userId" to auth.currentUser?.uid,
+                "renterId" to auth.currentUser?.uid,
                 "startDate" to Timestamp(selectedStartDate!!.time),
                 "endDate" to Timestamp(selectedEndDate!!.time),
-                "totalPrice" to ((selectedEndDate!!.timeInMillis - selectedStartDate!!.timeInMillis) / (1000 * 60 * 60 * 24) + 1) * args.item.dailyRate
+                "totalPrice" to ((selectedEndDate!!.timeInMillis - selectedStartDate!!.timeInMillis) / (1000 * 60 * 60 * 24) + 1) * args.item.dailyRate,
+                "ownerName" to args.item.ownerName
             )
 
-            db.collection("rentals")
+            // Create the rental document
+            db.collection("RentedItems")
                 .add(rental)
-                .addOnSuccessListener {
-                    Toast.makeText(context, "Rental confirmed!", Toast.LENGTH_SHORT).show()
-                    findNavController().navigateUp()
+                .addOnSuccessListener { rentalDoc ->
+                    // Update the item's availability
+                    db.collection("RentOutPosts")
+                        .document(args.item.id)
+                        .update("available", false)
+                        .addOnSuccessListener {
+                            Toast.makeText(context, "Rental confirmed!", Toast.LENGTH_SHORT).show()
+                            findNavController().navigateUp()
+                        }
+                        .addOnFailureListener { e ->
+                            Toast.makeText(context, "Error updating item: ${e.message}", Toast.LENGTH_SHORT).show()
+                        }
                 }
                 .addOnFailureListener { e ->
                     Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()

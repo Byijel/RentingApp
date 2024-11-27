@@ -7,16 +7,17 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.rentingapp.databinding.FragmentHomeBinding
-import com.example.rentingapp.models.RentalItem
 import com.example.rentingapp.adapters.ApplianceAdapter
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.Blob
 import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.Query
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.firestore
 import androidx.navigation.fragment.findNavController
 import com.example.rentingapp.R
+import com.example.rentingapp.models.RentalItem
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -103,24 +104,34 @@ class Home : Fragment() {
     }
 
     private fun loadItemDetails(document: DocumentSnapshot, itemsList: MutableList<RentalItem>, adapter: ApplianceAdapter) {
-        val userId = document.getString("userId") ?: return
-        Firebase.firestore.collection("users").document(userId).get()
-            .addOnSuccessListener { userDocument ->
-                val fullName = "${userDocument.getString("firstName")} ${userDocument.getString("lastName")}"
-                val item = RentalItem(
-                    id = document.id,
-                    applianceName = document.getString("name") ?: "",
-                    dailyRate = document.getDouble("price") ?: 0.0,
-                    category = document.getString("category") ?: "",
-                    condition = document.getString("condition") ?: "",
-                    description = document.getString("description") ?: "",
-                    availability = document.getBoolean("available") ?: true,
-                    image = (document.get("images") as? Map<String, Any>)?.values?.firstOrNull() as? Blob,
-                    createdAt = document.getTimestamp("createdAt") ?: Timestamp.now(),
-                    ownerName = fullName
-                )
-                itemsList.add(item)
-                adapter.notifyDataSetChanged()
+        // For rented items, we need to get the item details from RentOutPosts
+        val itemId = document.getString("itemId") ?: return
+        
+        Firebase.firestore.collection("RentOutPosts").document(itemId)
+            .get()
+            .addOnSuccessListener { itemDoc ->
+                // Get the owner's details
+                val ownerId = itemDoc.getString("userId") ?: return@addOnSuccessListener
+                Firebase.firestore.collection("users").document(ownerId)
+                    .get()
+                    .addOnSuccessListener { userDocument ->
+                        val fullName = "${userDocument.getString("firstName")} ${userDocument.getString("lastName")}"
+                        
+                        val item = RentalItem(
+                            id = itemDoc.id,
+                            applianceName = itemDoc.getString("name") ?: "",
+                            dailyRate = itemDoc.getDouble("price") ?: 0.0,
+                            category = itemDoc.getString("category") ?: "",
+                            condition = itemDoc.getString("condition") ?: "",
+                            description = itemDoc.getString("description") ?: "",
+                            availability = itemDoc.getBoolean("available") ?: true,
+                            image = (itemDoc.get("images") as? Map<String, Any>)?.values?.firstOrNull() as? Blob,
+                            createdAt = itemDoc.getTimestamp("createdAt") ?: Timestamp.now(),
+                            ownerName = fullName
+                        )
+                        itemsList.add(item)
+                        adapter.notifyDataSetChanged()
+                    }
             }
     }
 
