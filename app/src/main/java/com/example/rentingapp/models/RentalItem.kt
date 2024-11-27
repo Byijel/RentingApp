@@ -21,5 +21,6 @@ data class RentalItem(
     val currentRenter: String? = null,
     val startDate: @RawValue Timestamp? = null,
     val endDate: @RawValue Timestamp? = null,
-    var renterName: String? = null
+    var renterName: String? = null,
+    val userId: String = ""
 ) : Parcelable

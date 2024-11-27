@@ -133,7 +133,8 @@ class Home : Fragment() {
                             availability = itemDoc.getBoolean("available") ?: true,
                             image = (itemDoc.get("images") as? Map<String, Any>)?.values?.firstOrNull() as? Blob,
                             createdAt = itemDoc.getTimestamp("createdAt") ?: Timestamp.now(),
-                            ownerName = fullName
+                            ownerName = fullName,
+                            userId = itemDoc.getString("userId") ?: ""
                         )
                         itemsList.add(item)
                         adapter.notifyDataSetChanged()
@@ -169,7 +170,8 @@ class Home : Fragment() {
                             createdAt = itemDoc.getTimestamp("createdAt") ?: Timestamp.now(),
                             ownerName = fullName,
                             startDate = document.getTimestamp("startDate"),
-                            endDate = document.getTimestamp("endDate")
+                            endDate = document.getTimestamp("endDate"),
+                            userId = itemDoc.getString("userId") ?: ""
                         )
                         itemsList.add(item)
                         adapter.notifyDataSetChanged()
@@ -223,7 +225,8 @@ class Home : Fragment() {
             createdAt = itemDoc.getTimestamp("createdAt") ?: Timestamp.now(),
             renterName = renterName,
             startDate = rentalDoc?.getTimestamp("startDate"),
-            endDate = rentalDoc?.getTimestamp("endDate")
+            endDate = rentalDoc?.getTimestamp("endDate"),
+            userId = itemDoc.getString("userId") ?: ""
         )
         itemsList.add(item)
         adapter.notifyDataSetChanged()
