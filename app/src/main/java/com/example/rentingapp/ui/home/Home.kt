@@ -19,6 +19,7 @@ import androidx.navigation.fragment.findNavController
 import com.example.rentingapp.R
 import com.example.rentingapp.models.RentalItem
 import com.example.rentingapp.adapters.RentedItemAdapter
+import com.example.rentingapp.adapters.RentedOutItemAdapter
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -34,7 +35,7 @@ class Home : Fragment() {
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
     private lateinit var rentedItemsAdapter: RentedItemAdapter
-    private lateinit var rentedOutItemsAdapter: ApplianceAdapter
+    private lateinit var rentedOutItemsAdapter: RentedOutItemAdapter
     private val rentedItems = mutableListOf<RentalItem>()
     private val rentedOutItems = mutableListOf<RentalItem>()
 
@@ -64,8 +65,8 @@ class Home : Fragment() {
             adapter = rentedItemsAdapter
         }
 
-        // Setup Rented Out Items RecyclerView
-        rentedOutItemsAdapter = ApplianceAdapter(rentedOutItems) { item ->
+        // Setup Rented Out Items RecyclerView with new adapter
+        rentedOutItemsAdapter = RentedOutItemAdapter(rentedOutItems) { item ->
             val bundle = Bundle().apply {
                 putParcelable("item", item)
             }
@@ -104,7 +105,11 @@ class Home : Fragment() {
             }
     }
 
-    private fun loadItemDetails(document: DocumentSnapshot, itemsList: MutableList<RentalItem>, adapter: ApplianceAdapter) {
+    private fun loadItemDetails(
+        document: DocumentSnapshot,
+        itemsList: MutableList<RentalItem>,
+        adapter: ApplianceAdapter
+    ) {
         // For rented items, we need to get the item details from RentOutPosts
         val itemId = document.getString("itemId") ?: return
         
@@ -136,14 +141,16 @@ class Home : Fragment() {
             }
     }
 
-    private fun loadItemDetails(document: DocumentSnapshot, itemsList: MutableList<RentalItem>, adapter: RentedItemAdapter) {
-        // For rented items, we need to get the item details from RentOutPosts
+    private fun loadItemDetails(
+        document: DocumentSnapshot,
+        itemsList: MutableList<RentalItem>,
+        adapter: RentedItemAdapter
+    ) {
         val itemId = document.getString("itemId") ?: return
         
         Firebase.firestore.collection("RentOutPosts").document(itemId)
             .get()
             .addOnSuccessListener { itemDoc ->
-                // Get the owner's details
                 val ownerId = itemDoc.getString("userId") ?: return@addOnSuccessListener
                 Firebase.firestore.collection("users").document(ownerId)
                     .get()
@@ -168,6 +175,58 @@ class Home : Fragment() {
                         adapter.notifyDataSetChanged()
                     }
             }
+    }
+
+    private fun loadItemDetails(
+        document: DocumentSnapshot,
+        itemsList: MutableList<RentalItem>,
+        adapter: RentedOutItemAdapter
+    ) {
+        val itemId = document.id
+        
+        Firebase.firestore.collection("RentedItems")
+            .whereEqualTo("itemId", itemId)
+            .get()
+            .addOnSuccessListener { rentals ->
+                val rental = rentals.documents.firstOrNull()
+                val renterId = rental?.getString("renterId")
+                
+                if (renterId != null) {
+                    Firebase.firestore.collection("users").document(renterId)
+                        .get()
+                        .addOnSuccessListener { renterDoc ->
+                            val renterName = "${renterDoc.getString("firstName")} ${renterDoc.getString("lastName")}"
+                            createAndAddItem(document, rental, renterName, itemsList, adapter)
+                        }
+                } else {
+                    createAndAddItem(document, rental, null, itemsList, adapter)
+                }
+            }
+    }
+
+    private fun createAndAddItem(
+        itemDoc: DocumentSnapshot,
+        rentalDoc: DocumentSnapshot?,
+        renterName: String?,
+        itemsList: MutableList<RentalItem>,
+        adapter: RentedOutItemAdapter
+    ) {
+        val item = RentalItem(
+            id = itemDoc.id,
+            applianceName = itemDoc.getString("name") ?: "",
+            dailyRate = itemDoc.getDouble("price") ?: 0.0,
+            category = itemDoc.getString("category") ?: "",
+            condition = itemDoc.getString("condition") ?: "",
+            description = itemDoc.getString("description") ?: "",
+            availability = itemDoc.getBoolean("available") ?: true,
+            image = (itemDoc.get("images") as? Map<String, Any>)?.values?.firstOrNull() as? Blob,
+            createdAt = itemDoc.getTimestamp("createdAt") ?: Timestamp.now(),
+            renterName = renterName,
+            startDate = rentalDoc?.getTimestamp("startDate"),
+            endDate = rentalDoc?.getTimestamp("endDate")
+        )
+        itemsList.add(item)
+        adapter.notifyDataSetChanged()
     }
 
     override fun onDestroyView() {
