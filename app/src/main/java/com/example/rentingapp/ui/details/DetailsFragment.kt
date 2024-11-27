@@ -45,13 +45,34 @@ class DetailsFragment : Fragment() {
         
         loadItemDetails()
         
-        // Setup calendar for all users
-        setupCalendarView()
-        binding.apply {
-            calendar.visibility = View.VISIBLE
-            selectedDates.visibility = View.VISIBLE
-            totalPrice.visibility = View.VISIBLE
-            rentButton.visibility = View.VISIBLE
+        val currentUserId = Firebase.auth.currentUser?.uid
+        val isOwner = currentUserId == args.item.userId
+        
+        // Only show calendar if:
+        // 1. Item is available
+        // 2. Current user is not the owner
+        if (args.item.availability && !isOwner) {
+            setupCalendarView()
+            binding.apply {
+                calendar.visibility = View.VISIBLE
+                selectedDates.visibility = View.VISIBLE
+                totalPrice.visibility = View.VISIBLE
+                rentButton.visibility = View.VISIBLE
+            }
+        } else {
+            binding.apply {
+                calendar.visibility = View.GONE
+                selectedDates.visibility = View.GONE
+                totalPrice.visibility = View.GONE
+                rentButton.visibility = View.GONE
+                
+                if (!args.item.availability) {
+                    rentStatusMessage.apply {
+                        text = "This item is not available"
+                        visibility = View.VISIBLE
+                    }
+                }
+            }
         }
         
         setupButtons()
