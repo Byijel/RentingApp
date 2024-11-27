@@ -28,34 +28,36 @@ class RentedOutItemAdapter(
 
         fun bind(item: RentalItem) {
             textItemName.text = item.applianceName
-            textRenter.text = "Rented by: ${item.renterName ?: "Not rented"}"
-
-            // Format dates
-            val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-            val startDate = item.startDate?.toDate()
-            val endDate = item.endDate?.toDate()
-
-            if (startDate != null && endDate != null) {
-                textDates.text = "From: ${dateFormat.format(startDate)} To: ${dateFormat.format(endDate)}"
+            
+            if (item.renterName != null) {
+                textRenter.text = "Rented by: ${item.renterName}"
                 
-                // Calculate remaining days
-                val today = Calendar.getInstance().time
-                val remainingDays = TimeUnit.DAYS.convert(
-                    endDate.time - today.time,
-                    TimeUnit.MILLISECONDS
-                )
+                // Format dates
+                val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                val startDate = item.startDate?.toDate()
+                val endDate = item.endDate?.toDate()
 
-                textRemainingDays.text = when {
-                    remainingDays < 0 -> "Rental expired"
-                    remainingDays == 0L -> "Last day"
-                    else -> "$remainingDays days remaining"
+                if (startDate != null && endDate != null) {
+                    textDates.text = "From: ${dateFormat.format(startDate)} To: ${dateFormat.format(endDate)}"
+                    
+                    // Calculate remaining days
+                    val today = Calendar.getInstance().time
+                    val remainingDays = TimeUnit.DAYS.convert(
+                        endDate.time - today.time,
+                        TimeUnit.MILLISECONDS
+                    )
+
+                    textRemainingDays.text = when {
+                        remainingDays < 0 -> "Rental expired"
+                        remainingDays == 0L -> "Last day"
+                        else -> "$remainingDays days remaining"
+                    }
                 }
-                
-                textRemainingDays.visibility = View.VISIBLE
-                textDates.visibility = View.VISIBLE
             } else {
-                textDates.visibility = View.GONE
-                textRemainingDays.visibility = View.GONE
+                // Show placeholder text for non-rented items
+                textRenter.text = "Rented by: Not rented"
+                textDates.text = "No active rental"
+                textRemainingDays.text = "Not currently rented"
             }
 
             // Load image
