@@ -45,23 +45,13 @@ class DetailsFragment : Fragment() {
         
         loadItemDetails()
         
-        // Only setup calendar if not owner and item is available
-        val currentUserId = Firebase.auth.currentUser?.uid
-        val isOwner = currentUserId == args.item.userId
-        
-        if (!isOwner && args.item.availability) {
-            setupCalendarView()
-            binding.apply {
-                calendar.visibility = View.VISIBLE
-                selectedDates.visibility = View.VISIBLE
-                totalPrice.visibility = View.VISIBLE
-                rentButton.visibility = View.VISIBLE
-            }
-        } else if (!args.item.availability) {
-            binding.rentStatusMessage.apply {
-                text = "This item is not available"
-                visibility = View.VISIBLE
-            }
+        // Setup calendar for all users
+        setupCalendarView()
+        binding.apply {
+            calendar.visibility = View.VISIBLE
+            selectedDates.visibility = View.VISIBLE
+            totalPrice.visibility = View.VISIBLE
+            rentButton.visibility = View.VISIBLE
         }
         
         setupButtons()
@@ -162,6 +152,15 @@ class DetailsFragment : Fragment() {
                 toggleAvailabilityButton.visibility = if (isOwner && !isRented) View.VISIBLE else View.GONE
                 removeListingButton.visibility = if (isOwner && !isRented) View.VISIBLE else View.GONE
 
+                // Add rent button click listener
+                rentButton.setOnClickListener {
+                    if (selectedStartDate != null && selectedEndDate != null) {
+                        rentItem()
+                    } else {
+                        Toast.makeText(context, "Please select start and end dates", Toast.LENGTH_SHORT).show()
+                    }
+                }
+
                 if (isRented) {
                     val message = if (isOwner) "This item is currently being rented" else "This item is not available"
                     rentStatusMessage.text = message
@@ -241,5 +240,36 @@ class DetailsFragment : Fragment() {
 
     private fun formatDate(date: Calendar): String {
         return SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(date.time)
+    }
+
+    private fun rentItem() {
+        val currentUserId = Firebase.auth.currentUser?.uid ?: return
+        
+        val rental = hashMapOf(
+            "itemId" to args.item.id,
+            "renterId" to currentUserId,
+            "startDate" to Timestamp(selectedStartDate!!.time),
+            "endDate" to Timestamp(selectedEndDate!!.time)
+        )
+
+        // Add rental to RentedItems collection
+        Firebase.firestore.collection("RentedItems")
+            .add(rental)
+            .addOnSuccessListener {
+                // Update item availability
+                Firebase.firestore.collection("RentOutPosts")
+                    .document(args.item.id)
+                    .update("available", false)
+                    .addOnSuccessListener {
+                        Toast.makeText(context, "Item rented successfully!", Toast.LENGTH_SHORT).show()
+                        findNavController().navigateUp()
+                    }
+                    .addOnFailureListener { e ->
+                        Toast.makeText(context, "Error updating item: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(context, "Error renting item: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
     }
 }
