@@ -18,5 +18,7 @@ data class RentalItem(
     val image: @RawValue Blob? = null,
     val createdAt: @RawValue Timestamp = Timestamp.now(),
     var ownerName: String = "",
-    val currentRenter: String? = null
+    val currentRenter: String? = null,
+    val startDate: @RawValue Timestamp? = null,
+    val endDate: @RawValue Timestamp? = null
 ) : Parcelable
