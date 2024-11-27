@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
@@ -15,10 +16,12 @@ import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import java.util.Date
 
 class DetailsFragment : Fragment() {
     private lateinit var binding: FragmentDetailsBinding
@@ -41,8 +44,38 @@ class DetailsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         
         loadItemDetails()
-        setupCalendarView()
-        setupRentButton()
+        
+        val currentUserId = Firebase.auth.currentUser?.uid
+        val isOwner = currentUserId == args.item.userId
+        
+        // Only show calendar if:
+        // 1. Item is available
+        // 2. Current user is not the owner
+        if (args.item.availability && !isOwner) {
+            setupCalendarView()
+            binding.apply {
+                calendar.visibility = View.VISIBLE
+                selectedDates.visibility = View.VISIBLE
+                totalPrice.visibility = View.VISIBLE
+                rentButton.visibility = View.VISIBLE
+            }
+        } else {
+            binding.apply {
+                calendar.visibility = View.GONE
+                selectedDates.visibility = View.GONE
+                totalPrice.visibility = View.GONE
+                rentButton.visibility = View.GONE
+                
+                if (!args.item.availability) {
+                    rentStatusMessage.apply {
+                        text = "This item is not available"
+                        visibility = View.VISIBLE
+                    }
+                }
+            }
+        }
+        
+        setupButtons()
     }
 
     private fun loadItemDetails() {
@@ -129,34 +162,135 @@ class DetailsFragment : Fragment() {
         }
     }
 
-    private fun setupRentButton() {
-        binding.rentButton.setOnClickListener {
-            if (selectedStartDate == null || selectedEndDate == null) {
-                Toast.makeText(context, "Please select start and end dates", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
+    private fun setupButtons() {
+        val currentUserId = Firebase.auth.currentUser?.uid
+        val isOwner = currentUserId == args.item.userId
+
+        // First check if item is being rented
+        checkIfItemIsRented { isRented ->
+            binding.apply {
+                rentButton.visibility = if (!isOwner && !isRented) View.VISIBLE else View.GONE
+                toggleAvailabilityButton.visibility = if (isOwner && !isRented) View.VISIBLE else View.GONE
+                removeListingButton.visibility = if (isOwner && !isRented) View.VISIBLE else View.GONE
+
+                // Add rent button click listener
+                rentButton.setOnClickListener {
+                    if (selectedStartDate != null && selectedEndDate != null) {
+                        rentItem()
+                    } else {
+                        Toast.makeText(context, "Please select start and end dates", Toast.LENGTH_SHORT).show()
+                    }
+                }
+
+                if (isRented) {
+                    val message = if (isOwner) "This item is currently being rented" else "This item is not available"
+                    rentStatusMessage.text = message
+                    rentStatusMessage.visibility = View.VISIBLE
+                } else {
+                    rentStatusMessage.visibility = View.GONE
+                    toggleAvailabilityButton.text = if (args.item.availability) "Make Unavailable" else "Make Available"
+                }
+
+                toggleAvailabilityButton.setOnClickListener {
+                    toggleItemAvailability()
+                }
+
+                removeListingButton.setOnClickListener {
+                    removeItem()
+                }
             }
-
-            val rental = hashMapOf(
-                "itemId" to args.item.id,
-                "userId" to auth.currentUser?.uid,
-                "startDate" to Timestamp(selectedStartDate!!.time),
-                "endDate" to Timestamp(selectedEndDate!!.time),
-                "totalPrice" to ((selectedEndDate!!.timeInMillis - selectedStartDate!!.timeInMillis) / (1000 * 60 * 60 * 24) + 1) * args.item.dailyRate
-            )
-
-            db.collection("rentals")
-                .add(rental)
-                .addOnSuccessListener {
-                    Toast.makeText(context, "Rental confirmed!", Toast.LENGTH_SHORT).show()
-                    findNavController().navigateUp()
-                }
-                .addOnFailureListener { e ->
-                    Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
         }
+    }
+
+    private fun checkIfItemIsRented(callback: (Boolean) -> Unit) {
+        Firebase.firestore.collection("RentedItems")
+            .whereEqualTo("itemId", args.item.id)
+            .get()
+            .addOnSuccessListener { documents ->
+                // Check if there are any active rentals
+                val isRented = documents.any { doc ->
+                    val endDate = doc.getTimestamp("endDate")?.toDate()
+                    // Item is considered rented if end date is in the future
+                    endDate?.after(Date()) ?: false
+                }
+                callback(isRented)
+            }
+            .addOnFailureListener {
+                // In case of error, assume item is not rented
+                callback(false)
+            }
+    }
+
+    private fun toggleItemAvailability() {
+        val newAvailability = !args.item.availability
+        Firebase.firestore.collection("RentOutPosts")
+            .document(args.item.id)
+            .update("available", newAvailability)
+            .addOnSuccessListener {
+                Toast.makeText(
+                    context,
+                    if (newAvailability) "Item is now available" else "Item is now unavailable",
+                    Toast.LENGTH_SHORT
+                ).show()
+                findNavController().navigateUp()
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(context, "Error updating availability: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    private fun removeItem() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Remove Listing")
+            .setMessage("Are you sure you want to remove this listing? This action cannot be undone.")
+            .setPositiveButton("Remove") { _, _ ->
+                Firebase.firestore.collection("RentOutPosts")
+                    .document(args.item.id)
+                    .delete()
+                    .addOnSuccessListener {
+                        Toast.makeText(context, "Listing removed successfully", Toast.LENGTH_SHORT).show()
+                        findNavController().navigateUp()
+                    }
+                    .addOnFailureListener { e ->
+                        Toast.makeText(context, "Error removing listing: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun formatDate(date: Calendar): String {
         return SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(date.time)
+    }
+
+    private fun rentItem() {
+        val currentUserId = Firebase.auth.currentUser?.uid ?: return
+        
+        val rental = hashMapOf(
+            "itemId" to args.item.id,
+            "renterId" to currentUserId,
+            "startDate" to Timestamp(selectedStartDate!!.time),
+            "endDate" to Timestamp(selectedEndDate!!.time)
+        )
+
+        // Add rental to RentedItems collection
+        Firebase.firestore.collection("RentedItems")
+            .add(rental)
+            .addOnSuccessListener {
+                // Update item availability
+                Firebase.firestore.collection("RentOutPosts")
+                    .document(args.item.id)
+                    .update("available", false)
+                    .addOnSuccessListener {
+                        Toast.makeText(context, "Item rented successfully!", Toast.LENGTH_SHORT).show()
+                        findNavController().navigateUp()
+                    }
+                    .addOnFailureListener { e ->
+                        Toast.makeText(context, "Error updating item: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(context, "Error renting item: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
     }
 }

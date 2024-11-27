@@ -172,6 +172,8 @@ class Search : Fragment() {
     }
 
     private fun loadRentalLocations() {
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        
         // Clear existing markers and items
         items.clear()
         addedItemIds.clear()
@@ -180,6 +182,7 @@ class Search : Fragment() {
 
         // Fetch rental locations from Firestore and add them to the map
         db.collection("RentOutPosts")
+            .whereNotEqualTo("userId", currentUserId)
             .get()
             .addOnSuccessListener { documents ->
                 var itemNumber = 1
@@ -242,6 +245,7 @@ class Search : Fragment() {
     }
 
     private fun performSearch() {
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: return
         val searchText = searchInput.text?.toString()?.lowercase() ?: ""
         val selectedCategory = categorySpinner.text?.toString()
 
@@ -253,6 +257,7 @@ class Search : Fragment() {
 
         // Start with the base query
         var query: Query = db.collection("RentOutPosts")
+            .whereNotEqualTo("userId", currentUserId)
 
         // Add category filter if selected
         if (!selectedCategory.isNullOrEmpty()) {

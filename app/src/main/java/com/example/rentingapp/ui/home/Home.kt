@@ -7,16 +7,19 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.rentingapp.databinding.FragmentHomeBinding
-import com.example.rentingapp.models.RentalItem
 import com.example.rentingapp.adapters.ApplianceAdapter
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.Blob
 import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.Query
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.firestore
 import androidx.navigation.fragment.findNavController
 import com.example.rentingapp.R
+import com.example.rentingapp.models.RentalItem
+import com.example.rentingapp.adapters.RentedItemAdapter
+import com.example.rentingapp.adapters.RentedOutItemAdapter
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -31,8 +34,8 @@ private const val ARG_PARAM2 = "param2"
 class Home : Fragment() {
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
-    private lateinit var rentedItemsAdapter: ApplianceAdapter
-    private lateinit var rentedOutItemsAdapter: ApplianceAdapter
+    private lateinit var rentedItemsAdapter: RentedItemAdapter
+    private lateinit var rentedOutItemsAdapter: RentedOutItemAdapter
     private val rentedItems = mutableListOf<RentalItem>()
     private val rentedOutItems = mutableListOf<RentalItem>()
 
@@ -51,7 +54,7 @@ class Home : Fragment() {
 
     private fun setupRecyclerViews() {
         // Setup Rented Items RecyclerView
-        rentedItemsAdapter = ApplianceAdapter(rentedItems) { item ->
+        rentedItemsAdapter = RentedItemAdapter(rentedItems) { item ->
             val bundle = Bundle().apply {
                 putParcelable("item", item)
             }
@@ -62,8 +65,8 @@ class Home : Fragment() {
             adapter = rentedItemsAdapter
         }
 
-        // Setup Rented Out Items RecyclerView
-        rentedOutItemsAdapter = ApplianceAdapter(rentedOutItems) { item ->
+        // Setup Rented Out Items RecyclerView with new adapter
+        rentedOutItemsAdapter = RentedOutItemAdapter(rentedOutItems) { item ->
             val bundle = Bundle().apply {
                 putParcelable("item", item)
             }
@@ -102,26 +105,131 @@ class Home : Fragment() {
             }
     }
 
-    private fun loadItemDetails(document: DocumentSnapshot, itemsList: MutableList<RentalItem>, adapter: ApplianceAdapter) {
-        val userId = document.getString("userId") ?: return
-        Firebase.firestore.collection("users").document(userId).get()
-            .addOnSuccessListener { userDocument ->
-                val fullName = "${userDocument.getString("firstName")} ${userDocument.getString("lastName")}"
-                val item = RentalItem(
-                    id = document.id,
-                    applianceName = document.getString("name") ?: "",
-                    dailyRate = document.getDouble("price") ?: 0.0,
-                    category = document.getString("category") ?: "",
-                    condition = document.getString("condition") ?: "",
-                    description = document.getString("description") ?: "",
-                    availability = document.getBoolean("available") ?: true,
-                    image = (document.get("images") as? Map<String, Any>)?.values?.firstOrNull() as? Blob,
-                    createdAt = document.getTimestamp("createdAt") ?: Timestamp.now(),
-                    ownerName = fullName
-                )
-                itemsList.add(item)
-                adapter.notifyDataSetChanged()
+    private fun loadItemDetails(
+        document: DocumentSnapshot,
+        itemsList: MutableList<RentalItem>,
+        adapter: ApplianceAdapter
+    ) {
+        // For rented items, we need to get the item details from RentOutPosts
+        val itemId = document.getString("itemId") ?: return
+        
+        Firebase.firestore.collection("RentOutPosts").document(itemId)
+            .get()
+            .addOnSuccessListener { itemDoc ->
+                // Get the owner's details
+                val ownerId = itemDoc.getString("userId") ?: return@addOnSuccessListener
+                Firebase.firestore.collection("users").document(ownerId)
+                    .get()
+                    .addOnSuccessListener { userDocument ->
+                        val fullName = "${userDocument.getString("firstName")} ${userDocument.getString("lastName")}"
+                        
+                        val item = RentalItem(
+                            id = itemDoc.id,
+                            applianceName = itemDoc.getString("name") ?: "",
+                            dailyRate = itemDoc.getDouble("price") ?: 0.0,
+                            category = itemDoc.getString("category") ?: "",
+                            condition = itemDoc.getString("condition") ?: "",
+                            description = itemDoc.getString("description") ?: "",
+                            availability = itemDoc.getBoolean("available") ?: true,
+                            image = (itemDoc.get("images") as? Map<String, Any>)?.values?.firstOrNull() as? Blob,
+                            createdAt = itemDoc.getTimestamp("createdAt") ?: Timestamp.now(),
+                            ownerName = fullName,
+                            userId = itemDoc.getString("userId") ?: ""
+                        )
+                        itemsList.add(item)
+                        adapter.notifyDataSetChanged()
+                    }
             }
+    }
+
+    private fun loadItemDetails(
+        document: DocumentSnapshot,
+        itemsList: MutableList<RentalItem>,
+        adapter: RentedItemAdapter
+    ) {
+        val itemId = document.getString("itemId") ?: return
+        
+        Firebase.firestore.collection("RentOutPosts").document(itemId)
+            .get()
+            .addOnSuccessListener { itemDoc ->
+                val ownerId = itemDoc.getString("userId") ?: return@addOnSuccessListener
+                Firebase.firestore.collection("users").document(ownerId)
+                    .get()
+                    .addOnSuccessListener { userDocument ->
+                        val fullName = "${userDocument.getString("firstName")} ${userDocument.getString("lastName")}"
+                        
+                        val item = RentalItem(
+                            id = itemDoc.id,
+                            applianceName = itemDoc.getString("name") ?: "",
+                            dailyRate = itemDoc.getDouble("price") ?: 0.0,
+                            category = itemDoc.getString("category") ?: "",
+                            condition = itemDoc.getString("condition") ?: "",
+                            description = itemDoc.getString("description") ?: "",
+                            availability = itemDoc.getBoolean("available") ?: true,
+                            image = (itemDoc.get("images") as? Map<String, Any>)?.values?.firstOrNull() as? Blob,
+                            createdAt = itemDoc.getTimestamp("createdAt") ?: Timestamp.now(),
+                            ownerName = fullName,
+                            startDate = document.getTimestamp("startDate"),
+                            endDate = document.getTimestamp("endDate"),
+                            userId = itemDoc.getString("userId") ?: ""
+                        )
+                        itemsList.add(item)
+                        adapter.notifyDataSetChanged()
+                    }
+            }
+    }
+
+    private fun loadItemDetails(
+        document: DocumentSnapshot,
+        itemsList: MutableList<RentalItem>,
+        adapter: RentedOutItemAdapter
+    ) {
+        val itemId = document.id
+        
+        Firebase.firestore.collection("RentedItems")
+            .whereEqualTo("itemId", itemId)
+            .get()
+            .addOnSuccessListener { rentals ->
+                val rental = rentals.documents.firstOrNull()
+                val renterId = rental?.getString("renterId")
+                
+                if (renterId != null) {
+                    Firebase.firestore.collection("users").document(renterId)
+                        .get()
+                        .addOnSuccessListener { renterDoc ->
+                            val renterName = "${renterDoc.getString("firstName")} ${renterDoc.getString("lastName")}"
+                            createAndAddItem(document, rental, renterName, itemsList, adapter)
+                        }
+                } else {
+                    createAndAddItem(document, rental, null, itemsList, adapter)
+                }
+            }
+    }
+
+    private fun createAndAddItem(
+        itemDoc: DocumentSnapshot,
+        rentalDoc: DocumentSnapshot?,
+        renterName: String?,
+        itemsList: MutableList<RentalItem>,
+        adapter: RentedOutItemAdapter
+    ) {
+        val item = RentalItem(
+            id = itemDoc.id,
+            applianceName = itemDoc.getString("name") ?: "",
+            dailyRate = itemDoc.getDouble("price") ?: 0.0,
+            category = itemDoc.getString("category") ?: "",
+            condition = itemDoc.getString("condition") ?: "",
+            description = itemDoc.getString("description") ?: "",
+            availability = itemDoc.getBoolean("available") ?: true,
+            image = (itemDoc.get("images") as? Map<String, Any>)?.values?.firstOrNull() as? Blob,
+            createdAt = itemDoc.getTimestamp("createdAt") ?: Timestamp.now(),
+            renterName = renterName,
+            startDate = rentalDoc?.getTimestamp("startDate"),
+            endDate = rentalDoc?.getTimestamp("endDate"),
+            userId = itemDoc.getString("userId") ?: ""
+        )
+        itemsList.add(item)
+        adapter.notifyDataSetChanged()
     }
 
     override fun onDestroyView() {
