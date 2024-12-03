@@ -21,5 +21,8 @@
         android:layout_gravity="start"
         android:fitsSystemWindows="true"
         app:headerLayout="@layout/nav_header_main"
+        app:itemIconPadding="12dp"
+        app:itemIconSize="42dp"
+        app:itemTextAppearance="@style/TextAppearance.AppCompat.Large"
         app:menu="@menu/activity_main_drawer" />
 </androidx.drawerlayout.widget.DrawerLayout>

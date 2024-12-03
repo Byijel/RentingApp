@@ -1,43 +1,68 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <group android:checkableBehavior="single">
         <item
             android:id="@+id/nav_home"
             android:icon="@drawable/ic_home_house"
             android:title="@string/menu_home"
-            android:iconTint="@color/blue_main" />
+            android:iconTint="@color/blue_main"
+            app:itemIconSize="32dp"
+            android:layout_height="80dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="16dp" />
 
         <item
             android:id="@+id/nav_search"
             android:icon="@drawable/ic_search_search"
             android:title="@string/menu_search"
-            android:iconTint="@color/blue_main" />
+            android:iconTint="@color/blue_main"
+            app:itemIconSize="32dp"
+            android:layout_height="80dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="16dp" />
 
         <item
             android:id="@+id/nav_rent_near_me"
             android:icon="@drawable/ic_rentbox_boxout"
             android:title="@string/menu_rent_near_me"
-            android:iconTint="@color/blue_main" />
+            android:iconTint="@color/blue_main"
+            app:itemIconSize="32dp"
+            android:layout_height="80dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="16dp" />
 
         <item
             android:id="@+id/nav_my_rents"
             android:icon="@drawable/ic_map_map"
             android:title="@string/menu_my_rents"
-            android:iconTint="@color/blue_main" />
+            android:iconTint="@color/blue_main"
+            app:itemIconSize="32dp"
+            android:layout_height="80dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="16dp" />
 
         <item
             android:id="@+id/nav_rent_out"
             android:icon="@drawable/ic_add_plus"
             android:title="@string/menu_rent_out"
-            android:iconTint="@color/blue_main" />
+            android:iconTint="@color/blue_main"
+            app:itemIconSize="32dp"
+            android:layout_height="80dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="16dp" />
 
         <item
             android:id="@+id/nav_address_registration"
             android:icon="@drawable/ic_map_map"
             android:title="(test) Address Registration"
-            android:iconTint="@color/blue_main" />
+            android:iconTint="@color/blue_main"
+            app:itemIconSize="32dp"
+            android:layout_height="80dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="16dp" />
     </group>
 
     <group android:id="@+id/bottom_group"
@@ -46,6 +71,10 @@
             android:id="@+id/nav_logout"
             android:icon="@drawable/ic_logout"
             android:title="Logout"
-            android:iconTint="@color/blue_main" />
+            android:iconTint="@color/blue_main"
+            app:itemIconSize="32dp"
+            android:layout_height="80dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="16dp" />
     </group>
 </menu>
