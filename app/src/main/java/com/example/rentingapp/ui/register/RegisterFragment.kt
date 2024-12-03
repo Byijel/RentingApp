@@ -40,6 +40,7 @@ import androidx.core.content.FileProvider
 import android.Manifest
 import android.util.Log
 import com.example.rentingapp.services.FirestoreImageService
+import com.google.firebase.firestore.Blob
 
 class RegisterFragment : Fragment() {
 
@@ -148,8 +149,8 @@ class RegisterFragment : Fragment() {
         }
 
         // Process the image first
-        val imageBytes = imageService.processProfileImage(selectedImageUri!!)
-        if (imageBytes == null) {
+        val imageBlob = imageService.uriToBlob(selectedImageUri!!)
+        if (imageBlob == null) {
             Toast.makeText(context, "Failed to process profile image. Please try a different image.", Toast.LENGTH_LONG).show()
             return
         }
@@ -157,72 +158,81 @@ class RegisterFragment : Fragment() {
         // Show progress and disable button
         binding.registerButton.isEnabled = false
         binding.progressBar.visibility = View.VISIBLE
+        binding.progressBar.isIndeterminate = true
 
         // First create the Firebase Auth user
         auth.createUserWithEmailAndPassword(email, password)
             .addOnSuccessListener { authResult ->
-                // Authentication successful, now process image and save user data
+                // Authentication successful, now save user data
                 val userId = authResult.user?.uid ?: run {
                     handleRegistrationError("Failed to get user ID")
                     return@addOnSuccessListener
                 }
 
-                // Upload image to Firebase Storage
-                val imageRef = storage.reference.child("profile_images/$userId.jpg")
-                val metadata = storageMetadata {
-                    contentType = "image/jpeg"
-                }
-                
-                imageRef.putBytes(imageBytes, metadata)
-                    .addOnSuccessListener { taskSnapshot ->
-                        // Get the download URL
-                        imageRef.downloadUrl.addOnSuccessListener { downloadUrl ->
-                            // Create user data with image URL
-                            val userData = hashMapOf(
-                                "firstName" to firstName,
-                                "lastName" to lastName,
-                                "email" to email,
-                                "phone" to phone,
-                                "profileImageUrl" to downloadUrl.toString()
-                            )
-                            // Save user data to Firestore
-                            saveUserDataToFirestore(userId, userData)
-                        }.addOnFailureListener { e ->
-                            handleRegistrationError("Error getting download URL: ${e.message}")
-                        }
+                // Create user data with image blob
+                val userData = hashMapOf(
+                    "firstName" to firstName,
+                    "lastName" to lastName,
+                    "email" to email,
+                    "phone" to phone,
+                    "profileImage" to imageBlob,
+                    "hasAddress" to false  // Default flag for address registration
+                )
+
+                // Save user data to Firestore
+                db.collection("users").document(userId)
+                    .set(userData)
+                    .addOnSuccessListener {
+                        // Navigate to address registration
+                        findNavController().navigate(R.id.action_registerFragment_to_address_registration)
                     }
                     .addOnFailureListener { e ->
-                        handleRegistrationError("Error uploading image: ${e.message}")
-                    }
-                    .addOnProgressListener { taskSnapshot ->
-                        val progress = (100.0 * taskSnapshot.bytesTransferred / taskSnapshot.totalByteCount)
-                        binding.progressBar.progress = progress.toInt()
+                        handleRegistrationError("Error saving user data: ${e.message}")
                     }
             }
             .addOnFailureListener { e ->
-                handleRegistrationError("Authentication failed: ${e.message}")
+                handleRegistrationError("Registration failed: ${e.message}")
             }
     }
 
-    private fun saveUserDataToFirestore(userId: String, userData: HashMap<String, String>) {
-        db.collection("users")
-            .document(userId)
-            .set(userData)
-            .addOnSuccessListener {
-                binding.progressBar.visibility = View.GONE
-                Toast.makeText(context, "Registration successful!", Toast.LENGTH_SHORT).show()
-                findNavController().navigate(R.id.action_registerFragment_to_address_registration)
-            }
-            .addOnFailureListener { e ->
-                handleRegistrationError("Error saving user data: ${e.message}")
-            }
-    }
-
-    private fun handleRegistrationError(message: String) {
-        binding.progressBar.visibility = View.GONE
+    private fun handleRegistrationError(errorMessage: String) {
+        Log.e("RegisterFragment", errorMessage)
+        Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
+        
+        // Reset UI
         binding.registerButton.isEnabled = true
-        Log.e("RegisterFragment", message)
-        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        binding.progressBar.visibility = View.GONE
+        binding.progressBar.isIndeterminate = false
+    }
+
+    // Helper method to retrieve and display stored profile image
+    private fun displayStoredProfileImage(userId: String) {
+        db.collection("users").document(userId)
+            .get()
+            .addOnSuccessListener { document ->
+                val imageBlob = document.get("profileImage") as? Blob
+                imageBlob?.let { blob ->
+                    val bitmap = imageService.blobToBitmap(blob)
+                    bitmap?.let { 
+                        binding.profileImageView.setImageBitmap(it) 
+                    }
+                }
+            }
+    }
+
+    // Optional: Add method to update profile image later
+    private fun updateProfileImage(userId: String, newImageUri: Uri) {
+        val newImageBlob = imageService.uriToBlob(newImageUri)
+        newImageBlob?.let { blob ->
+            db.collection("users").document(userId)
+                .update("profileImage", blob)
+                .addOnSuccessListener {
+                    Toast.makeText(context, "Profile image updated", Toast.LENGTH_SHORT).show()
+                }
+                .addOnFailureListener { e ->
+                    Toast.makeText(context, "Failed to update image: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+        }
     }
 
     private fun saveBitmapToUri(bitmap: Bitmap): Uri {
