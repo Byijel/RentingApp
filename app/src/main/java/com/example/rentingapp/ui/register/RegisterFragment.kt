@@ -1,10 +1,18 @@
 package com.example.rentingapp.ui.register
 
+import android.app.Activity
+import android.content.Intent
+import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
+import android.widget.ImageView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.example.rentingapp.R
@@ -16,6 +24,17 @@ import com.google.firebase.ktx.Firebase
 import android.text.TextWatcher
 import android.text.Editable
 import com.google.android.material.textfield.TextInputLayout
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import android.content.Context
+import android.os.Environment
+import android.provider.MediaStore.Files.FileColumns
+import androidx.core.content.FileProvider
+import android.Manifest
 
 class RegisterFragment : Fragment() {
 
@@ -24,6 +43,46 @@ class RegisterFragment : Fragment() {
     
     private lateinit var auth: FirebaseAuth
     private lateinit var db: FirebaseFirestore
+
+    private lateinit var profileImageView: ImageView
+    private lateinit var addImageButton: Button
+    private lateinit var takePictureButton: Button
+    private var selectedImageUri: Uri? = null
+
+    private val pickImage = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let {
+            selectedImageUri = it
+            profileImageView.setImageURI(it)
+        }
+    }
+
+    private val requestCameraPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        if (isGranted) {
+            // Permission granted, launch camera
+            val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+            cameraLauncher.launch(intent)
+        } else {
+            Toast.makeText(context, "Camera permission is required to take a photo", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private val cameraLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val imageBitmap = result.data?.extras?.get("data") as? Bitmap
+            if (imageBitmap != null) {
+                profileImageView.setImageBitmap(imageBitmap)
+                selectedImageUri = saveImageToTempFile(imageBitmap)
+            }
+        }
+    }
+
+    private fun saveImageToTempFile(bitmap: Bitmap): Uri {
+        val tempFile = File.createTempFile("profile_image", ".jpg", requireContext().cacheDir)
+        tempFile.outputStream().use { out ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+        }
+        return Uri.fromFile(tempFile)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -39,6 +98,20 @@ class RegisterFragment : Fragment() {
         // Initialize Firebase Auth and Firestore
         auth = Firebase.auth
         db = FirebaseFirestore.getInstance()
+
+        // Initialize image-related views
+        profileImageView = binding.profileImageView
+        addImageButton = binding.addImageButton
+        takePictureButton = binding.buttonTakePicture
+
+        // Setup image buttons
+        addImageButton.setOnClickListener {
+            pickImage.launch("image/*")
+        }
+
+        takePictureButton.setOnClickListener {
+            requestCameraPermission.launch(android.Manifest.permission.CAMERA)
+        }
 
         // Create a simple TextWatcher
         val createTextWatcher = { field: TextInputLayout ->
@@ -99,6 +172,11 @@ class RegisterFragment : Fragment() {
                         "phone" to phone
                     )
 
+                    // Add image to user data if selected
+                    selectedImageUri?.let { uri ->
+                        user["profileImageUri"] = uri.toString()
+                    }
+
                     db.collection("users")
                         .document(auth.currentUser!!.uid)
                         .set(user)
@@ -118,6 +196,7 @@ class RegisterFragment : Fragment() {
             }
     }
 
+    // Existing validation methods remain the same
     private fun validateInputs(email: String, password: String, firstName: String, lastName: String): Boolean {
         var isValid = true
         
