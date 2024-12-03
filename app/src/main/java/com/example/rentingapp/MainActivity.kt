@@ -42,6 +42,14 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         setSupportActionBar(binding.appBarMain.toolbar)
 
+        // Setup toolbar logo click
+        val toolbarLogo: ImageView = findViewById(R.id.toolbar_logo)
+        toolbarLogo.setOnClickListener {
+            // Navigate to home or perform specific action
+            navController.navigateUp()
+            navController.navigate(R.id.nav_home)
+        }
+
         auth = Firebase.auth
         navController = findNavController(R.id.nav_host_fragment_content_main)
         val drawerLayout: DrawerLayout = binding.drawerLayout
