@@ -28,26 +28,27 @@
 
             <!-- User's Name -->
             <TextView
+                android:id="@+id/userNameTextView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:paddingTop="@dimen/nav_header_vertical_spacing"
                 android:text="@string/nav_header_title"
                 android:textAppearance="@style/TextAppearance.AppCompat.Body1"
-                android:textSize="20sp" />
+                android:textSize="24sp" />
 
             <!-- Spacer between Name and Email -->
             <TextView
                 android:layout_width="151dp"
                 android:layout_height="wrap_content"
-                android:textSize="12sp" />
+                android:textSize="10sp" />
 
             <!-- User's Email -->
             <TextView
-                android:id="@+id/textView"
+                android:id="@+id/userEmailTextView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/nav_header_subtitle"
-                android:textSize="12sp" />
+                android:textSize="16sp" />
         </LinearLayout>
 
         <!-- Image on the Right with smaller size -->

@@ -81,6 +81,9 @@ class Home : Fragment() {
     private fun loadItems() {
         val currentUserId = Firebase.auth.currentUser?.uid ?: return
         
+        // Track unique item IDs to prevent duplicates
+        val uniqueItemIds = mutableSetOf<String>()
+
         // Load items user is renting
         Firebase.firestore.collection("RentedItems")
             .whereEqualTo("renterId", currentUserId)
@@ -88,8 +91,11 @@ class Home : Fragment() {
                 if (e != null) return@addSnapshotListener
                 rentedItems.clear()
                 snapshot?.forEach { document ->
-                    // Load the actual item details and owner info
-                    loadItemDetails(document, rentedItems, rentedItemsAdapter)
+                    if (!uniqueItemIds.contains(document.id)) {
+                        uniqueItemIds.add(document.id)
+                        // Load the actual item details and owner info
+                        loadItemDetails(document, rentedItems, rentedItemsAdapter)
+                    }
                 }
             }
 
@@ -100,7 +106,10 @@ class Home : Fragment() {
                 if (e != null) return@addSnapshotListener
                 rentedOutItems.clear()
                 snapshot?.forEach { document ->
-                    loadItemDetails(document, rentedOutItems, rentedOutItemsAdapter)
+                    if (!uniqueItemIds.contains(document.id)) {
+                        uniqueItemIds.add(document.id)
+                        loadItemDetails(document, rentedOutItems, rentedOutItemsAdapter)
+                    }
                 }
             }
     }

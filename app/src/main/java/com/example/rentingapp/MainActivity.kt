@@ -1,6 +1,7 @@
 package com.example.rentingapp
 
 import android.os.Bundle
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.drawerlayout.widget.DrawerLayout
@@ -15,6 +16,7 @@ import com.example.rentingapp.databinding.ActivityMainBinding
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.ktx.Firebase
 
 class MainActivity : AppCompatActivity() {
@@ -45,6 +47,25 @@ class MainActivity : AppCompatActivity() {
 
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
+
+        // Set user information in the navigation header
+        val headerView = navView.getHeaderView(0)
+        val userNameTextView = headerView.findViewById<TextView>(R.id.userNameTextView)
+        val userEmailTextView = headerView.findViewById<TextView>(R.id.userEmailTextView)
+
+        val currentUser = auth.currentUser
+        if (currentUser != null) {
+            userEmailTextView.text = currentUser.email
+
+            // Fetch user's name from Firestore
+            FirebaseFirestore.getInstance().collection("users").document(currentUser.uid)
+                .get()
+                .addOnSuccessListener { document ->
+                    val firstName = document.getString("firstName") ?: ""
+                    val lastName = document.getString("lastName") ?: ""
+                    userNameTextView.text = "$firstName $lastName"
+                }
+        }
 
         // Handle logout separately
         navView.menu.findItem(R.id.nav_logout).setOnMenuItemClickListener {
