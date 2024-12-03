@@ -118,11 +118,14 @@ class AddressRegistrationFragment : Fragment() {
 
     private fun updateMapMarker() {
         currentLocationMarker?.let { binding.mapView.overlays.remove(it) }
-        
+        // Add user location marker
         currentLocationMarker = Marker(binding.mapView).apply {
             position = currentLocation
             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+            title = "Your Location"
+            icon = resources.getDrawable(R.drawable.ic_location_on_24, null)
         }
+
         binding.mapView.overlays.add(currentLocationMarker)
         binding.mapView.invalidate()
     }

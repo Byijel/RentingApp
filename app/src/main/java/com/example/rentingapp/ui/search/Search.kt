@@ -1,12 +1,15 @@
 package com.example.rentingapp.ui.search
 
+import android.Manifest
 import android.content.Context
 import android.graphics.Color
+import android.location.Location
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -15,6 +18,9 @@ import com.example.rentingapp.adapters.ApplianceAdapter
 import com.example.rentingapp.databinding.FragmentSearchBinding
 import com.example.rentingapp.models.Category
 import com.example.rentingapp.models.RentalItem
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
+import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.Blob
 import com.google.firebase.firestore.FirebaseFirestore
@@ -27,13 +33,29 @@ import org.osmdroid.views.overlay.Polygon
 class Search : Fragment() {
     private var _binding: FragmentSearchBinding? = null
     private val binding get() = _binding!!
-    
+
     private val items = mutableListOf<RentalItem>()
     private val db = FirebaseFirestore.getInstance()
+
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
     private var userLocation: GeoPoint? = null
     private var radiusOverlay: Polygon? = null
     private lateinit var adapter: ApplianceAdapter
     private val itemCircles = mutableMapOf<String, Polygon>()
+
+    private fun getCurrentLocation() {
+        try {
+            fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
+                location?.let {
+                    userLocation = GeoPoint(it.latitude, it.longitude)
+                    binding.mapView.controller.animateTo(userLocation)
+                    updateMapOverlays()
+                }
+            }
+        } catch (e: SecurityException) {
+            Snackbar.make(binding.root, "Location permission is required", Snackbar.LENGTH_LONG).show()
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -46,7 +68,8 @@ class Search : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        
+
+        // Load OSMDroid configuration
         Configuration.getInstance().load(
             requireContext(),
             requireContext().getSharedPreferences("osmdroid", Context.MODE_PRIVATE)
@@ -54,14 +77,65 @@ class Search : Fragment() {
         
         setupMap()
         setupUI()
-        loadUserLocation()
+        loadUserLocation() // This will load the user's registered address from Firestore
+    }
+
+    private fun loadUserLocation() {
+        val currentUser = FirebaseAuth.getInstance().currentUser ?: run {
+            // Handle case when user is not logged in
+            findNavController().navigate(R.id.loginFragment)
+            return
+        }
+
+        db.collection("users").document(currentUser.uid)
+            .get()
+            .addOnSuccessListener { document ->
+                if (!document.exists()) {
+                    // Handle case when user document doesn't exist
+                    findNavController().navigate(R.id.nav_address_registration)
+                    return@addOnSuccessListener
+                }
+
+                val address = document.get("address") as? Map<*, *>
+                val latitude = address?.get("latitude") as? Double
+                val longitude = address?.get("longitude") as? Double
+
+                if (latitude == null || longitude == null) {
+                    // Handle case when address is incomplete
+                    findNavController().navigate(R.id.nav_address_registration)
+                    return@addOnSuccessListener
+                }
+
+                userLocation = GeoPoint(latitude, longitude)
+                userLocation?.let { location ->
+                    binding.mapView.controller.setCenter(location)
+                    binding.mapView.controller.setZoom(15.0)
+                    updateMapOverlays()
+                    performSearch()
+                }
+            }
+            .addOnFailureListener { exception ->
+                // Handle failure to load user location
+                Snackbar.make(binding.root, "Failed to load your location", Snackbar.LENGTH_LONG).show()
+                findNavController().navigate(R.id.nav_address_registration)
+            }
     }
 
     private fun setupMap() {
+        Configuration.getInstance().userAgentValue = requireActivity().packageName
+
         binding.mapView.apply {
             setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
             controller.setZoom(15.0)
+        }
+    }
+
+    private fun setupDistanceSlider() {
+        binding.distanceSlider.addOnChangeListener { slider, value, fromUser ->
+            binding.distanceLabel.text = "Distance: %.1f km".format(value)
+            updateMapOverlays()
+            performSearch()
         }
     }
 
@@ -95,7 +169,6 @@ class Search : Fragment() {
             stepSize = 0.2f
             value = 1f
             addOnChangeListener { _, value, _ ->
-                binding.distanceLabel.text = "Maximum Distance: ${formatDistance(value)}"
                 updateMapOverlays()
                 performSearch()
             }
@@ -109,53 +182,30 @@ class Search : Fragment() {
         })
     }
 
-    private fun formatDistance(value: Float): String {
-        return if (value < 1f) "${(value * 1000).toInt()}m"
-        else "%.1fkm".format(value)
-    }
-
-    private fun loadUserLocation() {
-        val currentUser = FirebaseAuth.getInstance().currentUser ?: return
-        
-        db.collection("users").document(currentUser.uid)
-            .get()
-            .addOnSuccessListener { document ->
-                val address = document.get("address") as? Map<*, *> ?: return@addOnSuccessListener
-                val latitude = address["latitude"] as? Double ?: return@addOnSuccessListener
-                val longitude = address["longitude"] as? Double ?: return@addOnSuccessListener
-                
-                userLocation = GeoPoint(latitude, longitude)
-                userLocation?.let { location ->
-                    binding.mapView.controller.setCenter(location)
-                    updateMapOverlays()
-                    performSearch()
-                }
-            }
-    }
-
     private fun updateMapOverlays() {
         val location = userLocation ?: return
-        
-        // Clear existing overlays
+
+        // Clear existing overlays only once
         binding.mapView.overlays.clear()
-        itemCircles.clear()  // Clear circle tracking
-        
+        itemCircles.clear()
+
         // Add user location marker
         val marker = Marker(binding.mapView).apply {
             position = location
             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
             title = "Your Location"
+            icon = resources.getDrawable(R.drawable.ic_location_on_24, null)
         }
         binding.mapView.overlays.add(marker)
-        
+
         // Add radius circle
         val radiusPoints = ArrayList<GeoPoint>()
-        val radius = binding.distanceSlider.value * 1000
+        val radius = binding.distanceSlider.value * 1000 // Convert km to meters
         for (i in 0..360 step 10) {
             val point = location.destinationPoint(radius.toDouble(), i.toDouble())
             radiusPoints.add(point)
         }
-        
+
         radiusOverlay = Polygon().apply {
             points = radiusPoints
             fillColor = Color.argb(50, 0, 0, 255)
@@ -163,19 +213,20 @@ class Search : Fragment() {
             strokeWidth = 2f
         }
         binding.mapView.overlays.add(radiusOverlay)
-        
-        // Add rental item circles - only for unique items
+
+        // Add rental item circles
         items.distinctBy { it.id }.forEach { item ->
-            if (!itemCircles.containsKey(item.id)) {
-                addItemMarker(item)
-            }
+            addItemMarker(item)
         }
+
+        // Refresh the map
+        binding.mapView.invalidate()
     }
 
     private fun addItemMarker(item: RentalItem) {
         // Skip if circle already exists for this item
         if (itemCircles.containsKey(item.id)) return
-        
+
         item.userId?.let { userId ->
             db.collection("users").document(userId)
                 .get()
@@ -183,21 +234,21 @@ class Search : Fragment() {
                     val address = userDoc.get("address") as? Map<*, *> ?: return@addOnSuccessListener
                     val lat = address["latitude"] as? Double ?: return@addOnSuccessListener
                     val lon = address["longitude"] as? Double ?: return@addOnSuccessListener
-                    
+
                     // Create random offset
                     val random = java.util.Random()
                     val offsetLat = random.nextDouble() * 0.002 - 0.001
                     val offsetLon = random.nextDouble() * 0.002 - 0.001
-                    
+
                     val offsetLocation = GeoPoint(lat + offsetLat, lon + offsetLon)
                     val radius = 100.0 + random.nextDouble() * 100.0
                     val points = ArrayList<GeoPoint>()
-                    
+
                     for (i in 0..360 step 10) {
                         val point = offsetLocation.destinationPoint(radius, i.toDouble())
                         points.add(point)
                     }
-                    
+
                     val circle = Polygon().apply {
                         this.points = points
                         fillColor = Color.argb(150, 255, 165, 0)
@@ -205,7 +256,7 @@ class Search : Fragment() {
                         strokeWidth = 3f
                         title = "${item.applianceName} - €${item.dailyRate}/day"
                     }
-                    
+
                     // Store circle in tracking map
                     itemCircles[item.id] = circle
                     binding.mapView.overlays.add(circle)
@@ -231,26 +282,25 @@ class Search : Fragment() {
         if (!selectedCategory.isNullOrEmpty()) {
             query = query.whereEqualTo("category", selectedCategory)
         }
-
         query.get().addOnSuccessListener { documents ->
             var completedQueries = 0
             val totalQueries = documents.size()
 
             for (document in documents) {
                 if (processedItems.contains(document.id)) continue
-                
+
                 val name = document.getString("name")?.lowercase() ?: ""
                 val description = document.getString("description")?.lowercase() ?: ""
 
-                if (searchText.isEmpty() || name.contains(searchText) || 
+                if (searchText.isEmpty() || name.contains(searchText) ||
                     description.contains(searchText)) {
-                    
+
                     document.getString("userId")?.let { userId ->
                         db.collection("users").document(userId)
                             .get()
                             .addOnSuccessListener { userDoc ->
                                 completedQueries++
-                                
+
                                 val address = userDoc.get("address") as? Map<*, *> ?: return@addOnSuccessListener
                                 val lat = address["latitude"] as? Double ?: return@addOnSuccessListener
                                 val lon = address["longitude"] as? Double ?: return@addOnSuccessListener
@@ -259,7 +309,7 @@ class Search : Fragment() {
                                 if (userLoc.distanceToAsDouble(itemLocation) <= binding.distanceSlider.value * 1000) {
                                     if (!processedItems.contains(document.id)) {
                                         processedItems.add(document.id)
-                                        
+
                                         val item = RentalItem(
                                             id = document.id,
                                             applianceName = document.getString("name") ?: "",
@@ -277,13 +327,13 @@ class Search : Fragment() {
                                         pendingItems.add(item)
                                     }
                                 }
-                                
+
                                 // Only update UI when all queries are complete
                                 if (completedQueries >= totalQueries) {
                                     items.clear()
                                     items.addAll(pendingItems.distinctBy { it.id })
                                     items.sortBy { it.applianceName }
-                                    adapter.notifyDataSetChanged()
+                                    adapter.notifyDataSetChanged()// Clear circle tracking
                                     updateMapOverlays()
                                 }
                             }
@@ -295,7 +345,7 @@ class Search : Fragment() {
                     completedQueries++
                 }
             }
-            
+
             // Handle case when there are no items
             if (totalQueries == 0) {
                 items.clear()
@@ -308,6 +358,10 @@ class Search : Fragment() {
     override fun onResume() {
         super.onResume()
         binding.mapView.onResume()
+        userLocation?.let { location ->
+            binding.mapView.controller.setCenter(location)
+            updateMapOverlays()
+        }
     }
 
     override fun onPause() {
@@ -318,7 +372,7 @@ class Search : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         binding.mapView.overlays.clear()
-        itemCircles.clear()  // Clear circle tracking
+        itemCircles.clear()
         binding.mapView.onDetach()
         _binding = null
     }
