@@ -162,10 +162,9 @@ class Search : Fragment() {
         }
         binding.mapView.overlays.add(radiusOverlay)
         
-        // Add rental item markers
-        items.forEach { item ->
-            // You would need to store location info in your RentalItem class
-            // This is just a placeholder for the concept
+        // Add rental item circles - only for unique items
+        val uniqueItems = items.distinctBy { it.id }
+        uniqueItems.forEach { item ->
             addItemMarker(item)
         }
         
@@ -181,16 +180,16 @@ class Search : Fragment() {
                     val lat = address["latitude"] as? Double ?: return@addOnSuccessListener
                     val lon = address["longitude"] as? Double ?: return@addOnSuccessListener
                     
-                    // Create random offset (within ~50m)
+                    // Create random offset (within ~100m)
                     val random = java.util.Random()
-                    val offsetLat = random.nextDouble() * 0.001 - 0.0005 
-                    val offsetLon = random.nextDouble() * 0.001 - 0.0005
+                    val offsetLat = random.nextDouble() * 0.002 - 0.001  // Increased offset range
+                    val offsetLon = random.nextDouble() * 0.002 - 0.001  // Increased offset range
                     
                     // Apply offset to location
                     val offsetLocation = GeoPoint(lat + offsetLat, lon + offsetLon)
                     
-                    // Create circle with random radius between 50m and 100m
-                    val radius = 50.0 + random.nextDouble() * 50.0
+                    // Create circle with random radius between 100m and 200m (bigger circles)
+                    val radius = 100.0 + random.nextDouble() * 100.0
                     val points = ArrayList<GeoPoint>()
                     
                     // Generate circle points
@@ -202,9 +201,9 @@ class Search : Fragment() {
                     // Create and add circle overlay
                     val circle = Polygon().apply {
                         this.points = points
-                        fillColor = Color.argb(80, 255, 165, 0) // Semi-transparent orange
-                        strokeColor = Color.rgb(255, 165, 0) // Solid orange
-                        strokeWidth = 2f
+                        fillColor = Color.argb(150, 255, 165, 0)  // More opaque orange (alpha increased from 80 to 150)
+                        strokeColor = Color.rgb(255, 165, 0)      // Solid orange
+                        strokeWidth = 3f                          // Slightly thicker border
                         
                         // Optional: Add title/info window
                         title = "${item.applianceName} - €${item.dailyRate}/day"
@@ -224,8 +223,9 @@ class Search : Fragment() {
 
         // Clear previous results
         items.clear()
-        
-        // Query Firestore
+        val processedItems = mutableSetOf<String>()
+        val pendingItems = mutableListOf<RentalItem>()
+
         var query = db.collection("RentOutPosts")
             .whereNotEqualTo("userId", currentUserId)
 
@@ -234,7 +234,12 @@ class Search : Fragment() {
         }
 
         query.get().addOnSuccessListener { documents ->
+            var completedQueries = 0
+            val totalQueries = documents.size()
+
             for (document in documents) {
+                if (processedItems.contains(document.id)) continue
+                
                 val name = document.getString("name")?.lowercase() ?: ""
                 val description = document.getString("description")?.lowercase() ?: ""
 
@@ -245,34 +250,58 @@ class Search : Fragment() {
                         db.collection("users").document(userId)
                             .get()
                             .addOnSuccessListener { userDoc ->
+                                completedQueries++
+                                
                                 val address = userDoc.get("address") as? Map<*, *> ?: return@addOnSuccessListener
                                 val lat = address["latitude"] as? Double ?: return@addOnSuccessListener
                                 val lon = address["longitude"] as? Double ?: return@addOnSuccessListener
                                 val itemLocation = GeoPoint(lat, lon)
 
                                 if (userLoc.distanceToAsDouble(itemLocation) <= binding.distanceSlider.value * 1000) {
-                                    val item = RentalItem(
-                                        id = document.id,
-                                        applianceName = document.getString("name") ?: "",
-                                        dailyRate = document.getDouble("price") ?: 0.0,
-                                        category = document.getString("category") ?: "",
-                                        condition = document.getString("condition") ?: "",
-                                        description = document.getString("description") ?: "",
-                                        availability = document.getBoolean("available") ?: true,
-                                        ownerName = "${userDoc.getString("firstName")} ${userDoc.getString("lastName")}",
-                                        userId = userId,
-                                        image = document.get("images")?.let { images ->
-                                            (images as? Map<*, *>)?.values?.firstOrNull() as? Blob
-                                        }
-                                    )
-                                    items.add(item)
+                                    if (!processedItems.contains(document.id)) {
+                                        processedItems.add(document.id)
+                                        
+                                        val item = RentalItem(
+                                            id = document.id,
+                                            applianceName = document.getString("name") ?: "",
+                                            dailyRate = document.getDouble("price") ?: 0.0,
+                                            category = document.getString("category") ?: "",
+                                            condition = document.getString("condition") ?: "",
+                                            description = document.getString("description") ?: "",
+                                            availability = document.getBoolean("available") ?: true,
+                                            ownerName = "${userDoc.getString("firstName")} ${userDoc.getString("lastName")}",
+                                            userId = userId,
+                                            image = document.get("images")?.let { images ->
+                                                (images as? Map<*, *>)?.values?.firstOrNull() as? Blob
+                                            }
+                                        )
+                                        pendingItems.add(item)
+                                    }
+                                }
+                                
+                                // Only update UI when all queries are complete
+                                if (completedQueries >= totalQueries) {
+                                    items.clear()
+                                    items.addAll(pendingItems.distinctBy { it.id })
                                     items.sortBy { it.applianceName }
                                     adapter.notifyDataSetChanged()
                                     updateMapOverlays()
                                 }
                             }
+                            .addOnFailureListener {
+                                completedQueries++
+                            }
                     }
+                } else {
+                    completedQueries++
                 }
+            }
+            
+            // Handle case when there are no items
+            if (totalQueries == 0) {
+                items.clear()
+                adapter.notifyDataSetChanged()
+                updateMapOverlays()
             }
         }
     }
