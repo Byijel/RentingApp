@@ -21,6 +21,11 @@
         <action
             android:id="@+id/action_registerFragment_to_nav_home"
             app:destination="@id/nav_home" />
+        <action
+            android:id="@+id/action_registerFragment_to_address_registration"
+            app:destination="@id/nav_address_registration"
+            app:popUpTo="@id/registerFragment"
+            app:popUpToInclusive="true" />
     </fragment>
 
 <!-- OTHER PAGES -->

@@ -23,6 +23,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.ktx.storage
+import com.google.firebase.storage.ktx.storageMetadata
 import android.text.TextWatcher
 import android.text.Editable
 import com.google.android.material.textfield.TextInputLayout
@@ -102,6 +103,9 @@ class RegisterFragment : Fragment() {
             cameraLauncher.launch(cameraIntent)
         }
 
+        // Set initial profile image
+        binding.profileImageView.setImageResource(R.drawable.ic_profile_placeholder)
+
         // Create a simple TextWatcher
         val createTextWatcher = { field: TextInputLayout ->
             object : TextWatcher {
@@ -138,6 +142,18 @@ class RegisterFragment : Fragment() {
             return
         }
 
+        if (selectedImageUri == null) {
+            Toast.makeText(context, "Please select a profile image", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Process the image first
+        val imageBytes = imageService.processProfileImage(selectedImageUri!!)
+        if (imageBytes == null) {
+            Toast.makeText(context, "Failed to process profile image. Please try a different image.", Toast.LENGTH_LONG).show()
+            return
+        }
+
         // Show progress and disable button
         binding.registerButton.isEnabled = false
         binding.progressBar.visibility = View.VISIBLE
@@ -151,41 +167,37 @@ class RegisterFragment : Fragment() {
                     return@addOnSuccessListener
                 }
 
-                // Create base user data
-                val userData = hashMapOf(
-                    "firstName" to firstName,
-                    "lastName" to lastName,
-                    "email" to email,
-                    "phone" to phone
-                )
-
-                // Process image if exists
-                selectedImageUri?.let { uri ->
-                    // Upload image to Firebase Storage
-                    val imageRef = storage.reference.child("profile_images/$userId.jpg")
-                    imageRef.putFile(uri)
-                        .addOnSuccessListener { taskSnapshot ->
-                            // Get the download URL
-                            imageRef.downloadUrl.addOnSuccessListener { downloadUrl ->
-                                // Add the download URL to user data
-                                userData["profileImageUrl"] = downloadUrl.toString()
-                                // Save user data to Firestore
-                                saveUserDataToFirestore(userId, userData)
-                            }.addOnFailureListener { e ->
-                                // If getting download URL fails, save user data without image
-                                Log.e("RegisterFragment", "Error getting download URL: ${e.message}")
-                                saveUserDataToFirestore(userId, userData)
-                            }
-                        }
-                        .addOnFailureListener { e ->
-                            // If image upload fails, save user data without image
-                            Log.e("RegisterFragment", "Error uploading image: ${e.message}")
-                            saveUserDataToFirestore(userId, userData)
-                        }
-                } ?: run {
-                    // No image selected, save user data directly
-                    saveUserDataToFirestore(userId, userData)
+                // Upload image to Firebase Storage
+                val imageRef = storage.reference.child("profile_images/$userId.jpg")
+                val metadata = storageMetadata {
+                    contentType = "image/jpeg"
                 }
+                
+                imageRef.putBytes(imageBytes, metadata)
+                    .addOnSuccessListener { taskSnapshot ->
+                        // Get the download URL
+                        imageRef.downloadUrl.addOnSuccessListener { downloadUrl ->
+                            // Create user data with image URL
+                            val userData = hashMapOf(
+                                "firstName" to firstName,
+                                "lastName" to lastName,
+                                "email" to email,
+                                "phone" to phone,
+                                "profileImageUrl" to downloadUrl.toString()
+                            )
+                            // Save user data to Firestore
+                            saveUserDataToFirestore(userId, userData)
+                        }.addOnFailureListener { e ->
+                            handleRegistrationError("Error getting download URL: ${e.message}")
+                        }
+                    }
+                    .addOnFailureListener { e ->
+                        handleRegistrationError("Error uploading image: ${e.message}")
+                    }
+                    .addOnProgressListener { taskSnapshot ->
+                        val progress = (100.0 * taskSnapshot.bytesTransferred / taskSnapshot.totalByteCount)
+                        binding.progressBar.progress = progress.toInt()
+                    }
             }
             .addOnFailureListener { e ->
                 handleRegistrationError("Authentication failed: ${e.message}")
@@ -199,7 +211,7 @@ class RegisterFragment : Fragment() {
             .addOnSuccessListener {
                 binding.progressBar.visibility = View.GONE
                 Toast.makeText(context, "Registration successful!", Toast.LENGTH_SHORT).show()
-                findNavController().navigate(R.id.nav_address_registration)
+                findNavController().navigate(R.id.action_registerFragment_to_address_registration)
             }
             .addOnFailureListener { e ->
                 handleRegistrationError("Error saving user data: ${e.message}")

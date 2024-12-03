@@ -18,6 +18,10 @@ class FirestoreImageService(private val context: Context) {
         private const val MIN_QUALITY = 5
         private const val QUALITY_DECREMENT = 5
         private const val MAX_IMAGE_DIMENSION = 800
+        private const val MAX_PROFILE_IMAGE_SIZE = 500000 // 500KB for profile images
+        private const val PROFILE_INITIAL_QUALITY = 90
+        private const val PROFILE_MIN_QUALITY = 10
+        private const val MAX_PROFILE_IMAGE_DIMENSION = 500 // Smaller for profile images
     }
 
     /**
@@ -77,7 +81,7 @@ class FirestoreImageService(private val context: Context) {
         }
     }
 
-    private fun loadScaledBitmap(uri: Uri): Bitmap? {
+    private fun loadScaledBitmap(uri: Uri, maxDimension: Int = MAX_IMAGE_DIMENSION): Bitmap? {
         return try {
             // First decode bounds
             val options = BitmapFactory.Options().apply {
@@ -88,7 +92,7 @@ class FirestoreImageService(private val context: Context) {
             }
 
             // Calculate scale factor
-            val scale = calculateScaleFactor(options.outWidth, options.outHeight)
+            val scale = calculateScaleFactor(options.outWidth, options.outHeight, maxDimension)
 
             // Decode bitmap with scale factor
             options.apply {
@@ -100,14 +104,14 @@ class FirestoreImageService(private val context: Context) {
                 BitmapFactory.decodeStream(input, null, options)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error loading bitmap", e)
+            Log.e(TAG, "Error loading scaled bitmap", e)
             null
         }
     }
 
-    private fun calculateScaleFactor(width: Int, height: Int): Int {
+    private fun calculateScaleFactor(width: Int, height: Int, maxDimension: Int = MAX_IMAGE_DIMENSION): Int {
         var scale = 1
-        while (width / scale > MAX_IMAGE_DIMENSION || height / scale > MAX_IMAGE_DIMENSION) {
+        while ((width / scale) > maxDimension || (height / scale) > maxDimension) {
             scale *= 2
         }
         return scale
@@ -136,6 +140,43 @@ class FirestoreImageService(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to process image: ${e.message}")
             null
+        }
+    }
+
+    /**
+     * Process a profile image URI specifically for user profiles
+     * Returns compressed bytes ready for upload
+     */
+    fun processProfileImage(uri: Uri): ByteArray? {
+        try {
+            // Load bitmap with reduced size specifically for profile
+            val bitmap = loadScaledBitmap(uri, MAX_PROFILE_IMAGE_DIMENSION) ?: return null
+
+            var quality = PROFILE_INITIAL_QUALITY
+            var bytes: ByteArray
+            
+            // Compress with decreasing quality until size is acceptable
+            do {
+                ByteArrayOutputStream().use { outputStream ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
+                    bytes = outputStream.toByteArray()
+                    quality -= QUALITY_DECREMENT
+                }
+            } while (bytes.size > MAX_PROFILE_IMAGE_SIZE && quality > PROFILE_MIN_QUALITY)
+
+            // Clean up
+            bitmap.recycle()
+
+            // Check final size
+            return if (bytes.size <= MAX_PROFILE_IMAGE_SIZE) {
+                bytes
+            } else {
+                Log.e(TAG, "Profile image too large even after maximum compression: ${bytes.size} bytes")
+                null
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error processing profile image", e)
+            return null
         }
     }
 }
