@@ -1,10 +1,15 @@
 package com.example.rentingapp
 
+import android.graphics.Bitmap
+import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.util.Log
+import android.view.View
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.graphics.drawable.RoundedBitmapDrawableFactory
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.navigation.NavController
 import androidx.navigation.findNavController
@@ -14,9 +19,11 @@ import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
 import androidx.navigation.ui.NavigationUI
 import com.example.rentingapp.databinding.ActivityMainBinding
+import com.example.rentingapp.services.FirestoreImageService
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.Blob
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.ktx.Firebase
 
@@ -25,6 +32,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var navController: NavController
     private lateinit var auth: FirebaseAuth
+    private lateinit var db: FirebaseFirestore
+    private lateinit var imageService: FirestoreImageService
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,6 +58,10 @@ class MainActivity : AppCompatActivity() {
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
 
+        // Initialize Firebase components
+        db = FirebaseFirestore.getInstance()
+        imageService = FirestoreImageService(this)
+
         // Check if user is logged in and has address
         val currentUser = auth.currentUser
         if (currentUser != null) {
@@ -59,6 +72,7 @@ class MainActivity : AppCompatActivity() {
         val headerView = navView.getHeaderView(0)
         val userNameTextView = headerView.findViewById<TextView>(R.id.userNameTextView)
         val userEmailTextView = headerView.findViewById<TextView>(R.id.userEmailTextView)
+        val profileImageView = headerView.findViewById<ImageView>(R.id.nav_header_profile_image)
 
         if (currentUser != null) {
             userEmailTextView.text = currentUser.email
@@ -71,6 +85,9 @@ class MainActivity : AppCompatActivity() {
                     val lastName = document.getString("lastName") ?: ""
                     userNameTextView.text = "$firstName $lastName"
                 }
+
+            // Load profile image in header
+            loadProfileImageInHeader(profileImageView)
         }
 
         // Handle logout separately
@@ -100,6 +117,31 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+        }
+    }
+
+    private fun loadProfileImageInHeader(profileImageView: ImageView) {
+        val currentUser = auth.currentUser
+
+        currentUser?.let { user ->
+            db.collection("users").document(user.uid)
+                .get()
+                .addOnSuccessListener { document ->
+                    val imageBlob = document.get("profileImage") as? Blob
+                    imageBlob?.let { blob ->
+                        val bitmap = imageService.blobToBitmap(blob)
+                        bitmap?.let { 
+                            // Create a circular drawable
+                            val roundedDrawable = RoundedBitmapDrawableFactory.create(resources, it)
+                            roundedDrawable.isCircular = true
+                            profileImageView.setImageDrawable(roundedDrawable)
+                        }
+                    }
+                }
+                .addOnFailureListener {
+                    // Set a default circular profile image if fetch fails
+                    profileImageView.setImageResource(R.drawable.ic_profile_placeholder)
+                }
         }
     }
 

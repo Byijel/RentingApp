@@ -52,15 +52,15 @@
         </LinearLayout>
 
         <!-- Image on the Right with smaller size -->
-        <ImageView
-            android:id="@+id/imageView"
+        <de.hdodenhof.circleimageview.CircleImageView
+            android:id="@+id/nav_header_profile_image"
             android:layout_width="70dp"
             android:layout_height="70dp"
             android:layout_gravity="center|end"
-            android:background="@color/blue_main_20"
-            android:contentDescription="@string/nav_header_desc"
-            app:srcCompat="@mipmap/ic_launcher_round"
-            tools:srcCompat="@tools:sample/avatars" />
+            android:src="@drawable/ic_profile_placeholder"
+            app:civ_border_width="2dp"
+            app:civ_border_color="@color/white"
+            android:contentDescription="@string/nav_header_desc" />
     </LinearLayout>
 
 </LinearLayout>

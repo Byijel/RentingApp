@@ -69,4 +69,7 @@ dependencies {
     
     // Location Services
     implementation("com.google.android.gms:play-services-location:21.0.1")
+    
+    // Circle Image View
+    implementation("de.hdodenhof:circleimageview:3.1.0")
 }
