@@ -33,6 +33,7 @@ class Search : Fragment() {
     private var userLocation: GeoPoint? = null
     private var radiusOverlay: Polygon? = null
     private lateinit var adapter: ApplianceAdapter
+    private val itemCircles = mutableMapOf<String, Polygon>()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -137,6 +138,7 @@ class Search : Fragment() {
         
         // Clear existing overlays
         binding.mapView.overlays.clear()
+        itemCircles.clear()  // Clear circle tracking
         
         // Add user location marker
         val marker = Marker(binding.mapView).apply {
@@ -148,7 +150,7 @@ class Search : Fragment() {
         
         // Add radius circle
         val radiusPoints = ArrayList<GeoPoint>()
-        val radius = binding.distanceSlider.value * 1000 // Convert km to meters
+        val radius = binding.distanceSlider.value * 1000
         for (i in 0..360 step 10) {
             val point = location.destinationPoint(radius.toDouble(), i.toDouble())
             radiusPoints.add(point)
@@ -163,15 +165,17 @@ class Search : Fragment() {
         binding.mapView.overlays.add(radiusOverlay)
         
         // Add rental item circles - only for unique items
-        val uniqueItems = items.distinctBy { it.id }
-        uniqueItems.forEach { item ->
-            addItemMarker(item)
+        items.distinctBy { it.id }.forEach { item ->
+            if (!itemCircles.containsKey(item.id)) {
+                addItemMarker(item)
+            }
         }
-        
-        binding.mapView.invalidate()
     }
 
     private fun addItemMarker(item: RentalItem) {
+        // Skip if circle already exists for this item
+        if (itemCircles.containsKey(item.id)) return
+        
         item.userId?.let { userId ->
             db.collection("users").document(userId)
                 .get()
@@ -180,35 +184,30 @@ class Search : Fragment() {
                     val lat = address["latitude"] as? Double ?: return@addOnSuccessListener
                     val lon = address["longitude"] as? Double ?: return@addOnSuccessListener
                     
-                    // Create random offset (within ~100m)
+                    // Create random offset
                     val random = java.util.Random()
-                    val offsetLat = random.nextDouble() * 0.002 - 0.001  // Increased offset range
-                    val offsetLon = random.nextDouble() * 0.002 - 0.001  // Increased offset range
+                    val offsetLat = random.nextDouble() * 0.002 - 0.001
+                    val offsetLon = random.nextDouble() * 0.002 - 0.001
                     
-                    // Apply offset to location
                     val offsetLocation = GeoPoint(lat + offsetLat, lon + offsetLon)
-                    
-                    // Create circle with random radius between 100m and 200m (bigger circles)
                     val radius = 100.0 + random.nextDouble() * 100.0
                     val points = ArrayList<GeoPoint>()
                     
-                    // Generate circle points
                     for (i in 0..360 step 10) {
                         val point = offsetLocation.destinationPoint(radius, i.toDouble())
                         points.add(point)
                     }
                     
-                    // Create and add circle overlay
                     val circle = Polygon().apply {
                         this.points = points
-                        fillColor = Color.argb(150, 255, 165, 0)  // More opaque orange (alpha increased from 80 to 150)
-                        strokeColor = Color.rgb(255, 165, 0)      // Solid orange
-                        strokeWidth = 3f                          // Slightly thicker border
-                        
-                        // Optional: Add title/info window
+                        fillColor = Color.argb(150, 255, 165, 0)
+                        strokeColor = Color.rgb(255, 165, 0)
+                        strokeWidth = 3f
                         title = "${item.applianceName} - €${item.dailyRate}/day"
                     }
                     
+                    // Store circle in tracking map
+                    itemCircles[item.id] = circle
                     binding.mapView.overlays.add(circle)
                     binding.mapView.invalidate()
                 }
@@ -318,6 +317,8 @@ class Search : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        binding.mapView.overlays.clear()
+        itemCircles.clear()  // Clear circle tracking
         binding.mapView.onDetach()
         _binding = null
     }
