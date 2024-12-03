@@ -173,7 +173,6 @@ class Search : Fragment() {
     }
 
     private fun addItemMarker(item: RentalItem) {
-        // Get item location from Firestore
         item.userId?.let { userId ->
             db.collection("users").document(userId)
                 .get()
@@ -182,13 +181,36 @@ class Search : Fragment() {
                     val lat = address["latitude"] as? Double ?: return@addOnSuccessListener
                     val lon = address["longitude"] as? Double ?: return@addOnSuccessListener
                     
-                    val marker = Marker(binding.mapView).apply {
-                        position = GeoPoint(lat, lon)
-                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                        title = item.applianceName
-                        snippet = "€${item.dailyRate}/day"
+                    // Create random offset (within ~50m)
+                    val random = java.util.Random()
+                    val offsetLat = random.nextDouble() * 0.001 - 0.0005 
+                    val offsetLon = random.nextDouble() * 0.001 - 0.0005
+                    
+                    // Apply offset to location
+                    val offsetLocation = GeoPoint(lat + offsetLat, lon + offsetLon)
+                    
+                    // Create circle with random radius between 50m and 100m
+                    val radius = 50.0 + random.nextDouble() * 50.0
+                    val points = ArrayList<GeoPoint>()
+                    
+                    // Generate circle points
+                    for (i in 0..360 step 10) {
+                        val point = offsetLocation.destinationPoint(radius, i.toDouble())
+                        points.add(point)
                     }
-                    binding.mapView.overlays.add(marker)
+                    
+                    // Create and add circle overlay
+                    val circle = Polygon().apply {
+                        this.points = points
+                        fillColor = Color.argb(80, 255, 165, 0) // Semi-transparent orange
+                        strokeColor = Color.rgb(255, 165, 0) // Solid orange
+                        strokeWidth = 2f
+                        
+                        // Optional: Add title/info window
+                        title = "${item.applianceName} - €${item.dailyRate}/day"
+                    }
+                    
+                    binding.mapView.overlays.add(circle)
                     binding.mapView.invalidate()
                 }
         }
