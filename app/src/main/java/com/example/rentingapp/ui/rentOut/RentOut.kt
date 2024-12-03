@@ -12,6 +12,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
+import android.widget.Button
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -26,10 +27,15 @@ import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 
 class RentOut : Fragment() {
     private lateinit var imageRecyclerView: RecyclerView
     private lateinit var addImageButton: MaterialButton
+    private lateinit var takePictureButton: Button
     private lateinit var submitButton: MaterialButton
     private lateinit var imageAdapter: ImageAdapter
     private lateinit var nameEditText: TextInputEditText
@@ -47,6 +53,16 @@ class RentOut : Fragment() {
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             result.data?.data?.let { uri ->
+                addImageToAdapter(uri)
+            }
+        }
+    }
+
+    private val cameraLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.extras?.get("data")?.let { bitmap ->
+                // Convert bitmap to Uri and add to adapter
+                val uri = saveBitmapToUri(bitmap as android.graphics.Bitmap)
                 addImageToAdapter(uri)
             }
         }
@@ -74,6 +90,8 @@ class RentOut : Fragment() {
     private fun initializeViews(view: View) {
         imageRecyclerView = view.findViewById(R.id.imageRecyclerView)
         addImageButton = view.findViewById(R.id.addImageButton)
+        takePictureButton = view.findViewById(R.id.button_take_picture)
+        Log.d(TAG, "Take Picture Button Initialized")
         submitButton = view.findViewById(R.id.submitButton)
         nameEditText = view.findViewById(R.id.nameEditText)
         descriptionEditText = view.findViewById(R.id.descriptionEditText)
@@ -107,6 +125,11 @@ class RentOut : Fragment() {
     private fun setupClickListeners() {
         addImageButton.setOnClickListener {
             openImagePicker()
+        }
+
+        takePictureButton.setOnClickListener {
+            Log.d(TAG, "Take Picture Button Clicked")
+            openCamera()
         }
 
         submitButton.setOnClickListener {
@@ -216,6 +239,11 @@ class RentOut : Fragment() {
         imagePickerLauncher.launch(intent)
     }
 
+    private fun openCamera() {
+        val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        cameraLauncher.launch(cameraIntent)
+    }
+
     private fun addImageToAdapter(uri: Uri) {
         imageAdapter.addImage(uri)
         imageRecyclerView.visibility = View.VISIBLE
@@ -226,5 +254,18 @@ class RentOut : Fragment() {
         if (imageAdapter.itemCount == 0) {
             imageRecyclerView.visibility = View.GONE
         }
+    }
+
+    private fun saveBitmapToUri(bitmap: android.graphics.Bitmap): Uri {
+        val filesDir = requireContext().getExternalFilesDir(null)
+        val imageFile = File(filesDir, "image_${System.currentTimeMillis()}.jpg")
+        try {
+            val fos = FileOutputStream(imageFile)
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 100, fos)
+            fos.close()
+        } catch (e: IOException) {
+            Log.e(TAG, "Error saving bitmap to file", e)
+        }
+        return Uri.fromFile(imageFile)
     }
 }
