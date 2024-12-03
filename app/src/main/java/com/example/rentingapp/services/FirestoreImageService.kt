@@ -125,4 +125,17 @@ class FirestoreImageService(private val context: Context) {
             null
         }
     }
+
+    // Add this function for single URI
+    fun uriToBlob(uri: Uri): Blob? {
+        return try {
+            // Convert URI to compressed bitmap bytes
+            val bytes = compressImage(uri) ?: return null
+            // Convert to Firestore Blob
+            Blob.fromBytes(bytes)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to process image: ${e.message}")
+            null
+        }
+    }
 }

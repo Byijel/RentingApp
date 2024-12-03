@@ -21,6 +21,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.ktx.Firebase
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.ktx.storage
 import android.text.TextWatcher
 import android.text.Editable
 import com.google.android.material.textfield.TextInputLayout
@@ -35,53 +37,41 @@ import android.os.Environment
 import android.provider.MediaStore.Files.FileColumns
 import androidx.core.content.FileProvider
 import android.Manifest
+import android.util.Log
+import com.example.rentingapp.services.FirestoreImageService
 
 class RegisterFragment : Fragment() {
 
     private var _binding: FragmentRegisterBinding? = null
     private val binding get() = _binding!!
-    
+
     private lateinit var auth: FirebaseAuth
     private lateinit var db: FirebaseFirestore
-
-    private lateinit var profileImageView: ImageView
-    private lateinit var addImageButton: Button
-    private lateinit var takePictureButton: Button
+    private lateinit var storage: FirebaseStorage
+    private lateinit var imageService: FirestoreImageService
     private var selectedImageUri: Uri? = null
 
-    private val pickImage = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let {
-            selectedImageUri = it
-            profileImageView.setImageURI(it)
-        }
-    }
-
-    private val requestCameraPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-        if (isGranted) {
-            // Permission granted, launch camera
-            val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-            cameraLauncher.launch(intent)
-        } else {
-            Toast.makeText(context, "Camera permission is required to take a photo", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private val cameraLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+    private val imagePickerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            val imageBitmap = result.data?.extras?.get("data") as? Bitmap
-            if (imageBitmap != null) {
-                profileImageView.setImageBitmap(imageBitmap)
-                selectedImageUri = saveImageToTempFile(imageBitmap)
+            result.data?.data?.let { uri ->
+                selectedImageUri = uri
+                binding.profileImageView.setImageURI(uri)
             }
         }
     }
 
-    private fun saveImageToTempFile(bitmap: Bitmap): Uri {
-        val tempFile = File.createTempFile("profile_image", ".jpg", requireContext().cacheDir)
-        tempFile.outputStream().use { out ->
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+    private val cameraLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.extras?.get("data")?.let { bitmap ->
+                val uri = saveBitmapToUri(bitmap as Bitmap)
+                selectedImageUri = uri
+                binding.profileImageView.setImageURI(uri)
+            }
         }
-        return Uri.fromFile(tempFile)
     }
 
     override fun onCreateView(
@@ -94,23 +84,22 @@ class RegisterFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        
+
         // Initialize Firebase Auth and Firestore
         auth = Firebase.auth
         db = FirebaseFirestore.getInstance()
-
-        // Initialize image-related views
-        profileImageView = binding.profileImageView
-        addImageButton = binding.addImageButton
-        takePictureButton = binding.buttonTakePicture
+        storage = Firebase.storage
+        imageService = FirestoreImageService(requireContext())
 
         // Setup image buttons
-        addImageButton.setOnClickListener {
-            pickImage.launch("image/*")
+        binding.addImageButton.setOnClickListener {
+            val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+            imagePickerLauncher.launch(intent)
         }
 
-        takePictureButton.setOnClickListener {
-            requestCameraPermission.launch(android.Manifest.permission.CAMERA)
+        binding.buttonTakePicture.setOnClickListener {
+            val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+            cameraLauncher.launch(cameraIntent)
         }
 
         // Create a simple TextWatcher
@@ -144,62 +133,103 @@ class RegisterFragment : Fragment() {
         }
     }
 
-    private fun registerUser(
-        email: String, password: String, firstName: String, lastName: String,
-        phone: String
-    ) {
-        // Validate all fields
+    private fun registerUser(email: String, password: String, firstName: String, lastName: String, phone: String) {
         if (!validateInputs(email, password, firstName, lastName)) {
             return
         }
 
-        // Additional validations for optional fields if they're not empty
-        if (phone.isNotEmpty() && !isValidPhone(phone)) {
-            binding.phoneLayout.error = "Please enter a valid phone number"
-            return
-        }
+        // Show progress and disable button
+        binding.registerButton.isEnabled = false
+        binding.progressBar.visibility = View.VISIBLE
 
-        binding.registerButton.isEnabled = false // Prevent multiple clicks
-
+        // First create the Firebase Auth user
         auth.createUserWithEmailAndPassword(email, password)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    // Save additional user information to Firestore
-                    val user = hashMapOf(
-                        "firstName" to firstName,
-                        "lastName" to lastName,
-                        "email" to email,
-                        "phone" to phone
-                    )
+            .addOnSuccessListener { authResult ->
+                // Authentication successful, now process image and save user data
+                val userId = authResult.user?.uid ?: run {
+                    handleRegistrationError("Failed to get user ID")
+                    return@addOnSuccessListener
+                }
 
-                    // Add image to user data if selected
-                    selectedImageUri?.let { uri ->
-                        user["profileImageUri"] = uri.toString()
-                    }
+                // Create base user data
+                val userData = hashMapOf(
+                    "firstName" to firstName,
+                    "lastName" to lastName,
+                    "email" to email,
+                    "phone" to phone
+                )
 
-                    db.collection("users")
-                        .document(auth.currentUser!!.uid)
-                        .set(user)
-                        .addOnSuccessListener {
-                            Toast.makeText(context, "Registration successful!", Toast.LENGTH_SHORT).show()
-                            // Navigate to address registration after successful registration
-                            findNavController().navigate(R.id.nav_address_registration)
+                // Process image if exists
+                selectedImageUri?.let { uri ->
+                    // Upload image to Firebase Storage
+                    val imageRef = storage.reference.child("profile_images/$userId.jpg")
+                    imageRef.putFile(uri)
+                        .addOnSuccessListener { taskSnapshot ->
+                            // Get the download URL
+                            imageRef.downloadUrl.addOnSuccessListener { downloadUrl ->
+                                // Add the download URL to user data
+                                userData["profileImageUrl"] = downloadUrl.toString()
+                                // Save user data to Firestore
+                                saveUserDataToFirestore(userId, userData)
+                            }.addOnFailureListener { e ->
+                                // If getting download URL fails, save user data without image
+                                Log.e("RegisterFragment", "Error getting download URL: ${e.message}")
+                                saveUserDataToFirestore(userId, userData)
+                            }
                         }
                         .addOnFailureListener { e ->
-                            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                            binding.registerButton.isEnabled = true
+                            // If image upload fails, save user data without image
+                            Log.e("RegisterFragment", "Error uploading image: ${e.message}")
+                            saveUserDataToFirestore(userId, userData)
                         }
-                } else {
-                    Toast.makeText(context, "Registration failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
-                    binding.registerButton.isEnabled = true
+                } ?: run {
+                    // No image selected, save user data directly
+                    saveUserDataToFirestore(userId, userData)
                 }
             }
+            .addOnFailureListener { e ->
+                handleRegistrationError("Authentication failed: ${e.message}")
+            }
+    }
+
+    private fun saveUserDataToFirestore(userId: String, userData: HashMap<String, String>) {
+        db.collection("users")
+            .document(userId)
+            .set(userData)
+            .addOnSuccessListener {
+                binding.progressBar.visibility = View.GONE
+                Toast.makeText(context, "Registration successful!", Toast.LENGTH_SHORT).show()
+                findNavController().navigate(R.id.nav_address_registration)
+            }
+            .addOnFailureListener { e ->
+                handleRegistrationError("Error saving user data: ${e.message}")
+            }
+    }
+
+    private fun handleRegistrationError(message: String) {
+        binding.progressBar.visibility = View.GONE
+        binding.registerButton.isEnabled = true
+        Log.e("RegisterFragment", message)
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun saveBitmapToUri(bitmap: Bitmap): Uri {
+        val filesDir = requireContext().getExternalFilesDir(null)
+        val imageFile = File(filesDir, "profile_${System.currentTimeMillis()}.jpg")
+        try {
+            FileOutputStream(imageFile).use { fos ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos)
+            }
+        } catch (e: IOException) {
+            Log.e("RegisterFragment", "Error saving bitmap to file", e)
+        }
+        return Uri.fromFile(imageFile)
     }
 
     // Existing validation methods remain the same
     private fun validateInputs(email: String, password: String, firstName: String, lastName: String): Boolean {
         var isValid = true
-        
+
         // Clear all previous errors
         binding.emailLayout.error = null
         binding.passwordLayout.error = null
@@ -250,7 +280,7 @@ class RegisterFragment : Fragment() {
         val hasSpecialChar = password.any { it in "@#$%^&+=!?" }
         val isLongEnough = password.length >= 8
         val hasNoWhitespace = !password.contains("\\s".toRegex())
-        
+
         return hasNumber && hasUpperCase && hasSpecialChar && isLongEnough && hasNoWhitespace
     }
 

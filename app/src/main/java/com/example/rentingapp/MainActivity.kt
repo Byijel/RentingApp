@@ -48,12 +48,17 @@ class MainActivity : AppCompatActivity() {
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
 
+        // Check if user is logged in and has address
+        val currentUser = auth.currentUser
+        if (currentUser != null) {
+            checkUserAddress(currentUser.uid)
+        }
+
         // Set user information in the navigation header
         val headerView = navView.getHeaderView(0)
         val userNameTextView = headerView.findViewById<TextView>(R.id.userNameTextView)
         val userEmailTextView = headerView.findViewById<TextView>(R.id.userEmailTextView)
 
-        val currentUser = auth.currentUser
         if (currentUser != null) {
             userEmailTextView.text = currentUser.email
 
@@ -75,6 +80,45 @@ class MainActivity : AppCompatActivity() {
             drawerLayout.closeDrawers()
             true
         }
+
+        // Listen for navigation changes
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            when (destination.id) {
+                R.id.loginFragment -> {
+                    supportActionBar?.hide()
+                    drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
+                }
+                R.id.registerFragment -> {
+                    supportActionBar?.hide()
+                    drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
+                }
+                else -> {
+                    supportActionBar?.show()
+                    if (auth.currentUser != null) {
+                        drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun checkUserAddress(userId: String) {
+        FirebaseFirestore.getInstance().collection("users").document(userId)
+            .get()
+            .addOnSuccessListener { document ->
+                val address = document.get("address") as? Map<*, *>
+                if (address == null || 
+                    address["street"].toString().isNullOrEmpty() || 
+                    address["city"].toString().isNullOrEmpty()) {
+                    // No address found, redirect to address registration
+                    navController.navigate(R.id.nav_address_registration)
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("MainActivity", "Error checking address: ${e.message}")
+                // In case of error, redirect to address registration to be safe
+                navController.navigate(R.id.nav_address_registration)
+            }
     }
 
     override fun onSupportNavigateUp(): Boolean {
