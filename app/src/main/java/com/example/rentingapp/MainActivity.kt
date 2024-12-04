@@ -71,9 +71,9 @@ class MainActivity : AppCompatActivity() {
         imageService = FirestoreImageService(this)
 
         // Check if user is logged in and has address
-        val currentUser = auth.currentUser
-        if (currentUser != null) {
-            checkUserAddress(currentUser.uid)
+        val cUser = auth.currentUser
+        if (cUser != null) {
+            checkUserAddress(cUser.uid)
         }
 
         // Set user information in the navigation header
@@ -82,20 +82,35 @@ class MainActivity : AppCompatActivity() {
         val userEmailTextView = headerView.findViewById<TextView>(R.id.userEmailTextView)
         val profileImageView = headerView.findViewById<ImageView>(R.id.nav_header_profile_image)
 
+        // Reset views to default state
+        userNameTextView.text = ""
+        userEmailTextView.text = ""
+        profileImageView.setImageResource(R.drawable.ic_profile_placeholder)
+
+        val currentUser = auth.currentUser
         if (currentUser != null) {
             userEmailTextView.text = currentUser.email
 
-            // Fetch user's name from Firestore
-            FirebaseFirestore.getInstance().collection("users").document(currentUser.uid)
+            // Fetch user's name from Firestore using the authenticated user's ID
+            db.collection("users").document(currentUser.uid)
                 .get()
                 .addOnSuccessListener { document ->
-                    val firstName = document.getString("firstName") ?: ""
-                    val lastName = document.getString("lastName") ?: ""
-                    userNameTextView.text = "$firstName $lastName"
+                    if (document.exists()) {
+                        val firstName = document.getString("firstName") ?: ""
+                        val lastName = document.getString("lastName") ?: ""
+                        userNameTextView.text = "$firstName $lastName"
+                        
+                        // Load profile image only after we confirm we have the correct user document
+                        loadProfileImageInHeader(profileImageView)
+                    } else {
+                        Log.e("MainActivity", "User document does not exist for ID: ${currentUser.uid}")
+                        Toast.makeText(this, "Error loading user profile", Toast.LENGTH_SHORT).show()
+                    }
                 }
-
-            // Load profile image in header
-            loadProfileImageInHeader(profileImageView)
+                .addOnFailureListener { e ->
+                    Log.e("MainActivity", "Error fetching user data: ${e.message}")
+                    Toast.makeText(this, "Error loading user profile", Toast.LENGTH_SHORT).show()
+                }
         }
 
         // Handle logout separately
