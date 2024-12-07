@@ -153,6 +153,10 @@ class Search : Fragment() {
                 }
             }
         })
+
+        binding.showUnavailableCheckbox.setOnCheckedChangeListener { _, _ ->
+            performSearch()
+        }
     }
 
     private fun performSearch() {
@@ -215,22 +219,25 @@ class Search : Fragment() {
                                     val distance = userLoc.distanceToAsDouble(itemLocation)
 
                                     if (distance <= maxDistance) {
-                                        val fullName = "${userDoc.getString("firstName")} ${userDoc.getString("lastName")}"
-                                        val item = RentalItem(
-                                            id = document.id,
-                                            applianceName = document.getString("name") ?: "",
-                                            dailyRate = document.getDouble("price") ?: 0.0,
-                                            category = document.getString("category") ?: "",
-                                            condition = document.getString("condition") ?: "",
-                                            description = document.getString("description") ?: "",
-                                            availability = document.getBoolean("available") ?: true,
-                                            ownerName = fullName,
-                                            userId = userId,
-                                            image = document.get("images")?.let { images ->
-                                                (images as? Map<*, *>)?.values?.firstOrNull() as? Blob
-                                            }
-                                        )
-                                        pendingItems.add(item)
+                                        val isAvailable = document.getBoolean("available") ?: true
+                                        if (isAvailable || binding.showUnavailableCheckbox.isChecked) {
+                                            val fullName = "${userDoc.getString("firstName")} ${userDoc.getString("lastName")}"
+                                            val item = RentalItem(
+                                                id = document.id,
+                                                applianceName = document.getString("name") ?: "",
+                                                dailyRate = document.getDouble("price") ?: 0.0,
+                                                category = document.getString("category") ?: "",
+                                                condition = document.getString("condition") ?: "",
+                                                description = document.getString("description") ?: "",
+                                                availability = document.getBoolean("available") ?: true,
+                                                ownerName = fullName,
+                                                userId = userId,
+                                                image = document.get("images")?.let { images ->
+                                                    (images as? Map<*, *>)?.values?.firstOrNull() as? Blob
+                                                }
+                                            )
+                                            pendingItems.add(item)
+                                        }
                                     }
                                 }
 
