@@ -99,12 +99,18 @@ class Search : Fragment() {
         categories.add(0, "All Categories")
         
         binding.categorySpinner.apply {
-            setAdapter(ArrayAdapter(
+            val categoryAdapter = ArrayAdapter(
                 requireContext(),
                 android.R.layout.simple_dropdown_item_1line,
                 categories
-            ))
+            ).apply {
+                setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            }
+            
+            threshold = 1000 // Prevent filtering
+            setAdapter(categoryAdapter)
             setText("All Categories", false)
+            
             setOnItemClickListener { _, _, _, _ ->
                 performSearch()
             }
@@ -424,6 +430,7 @@ class Search : Fragment() {
     override fun onResume() {
         super.onResume()
         binding.mapView.onResume()
+        
         userLocation?.let { location ->
             binding.mapView.controller.setCenter(location)
             updateMapOverlays()
