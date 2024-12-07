@@ -5,6 +5,8 @@ import android.content.Context
 import android.graphics.Color
 import android.location.Location
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -24,11 +26,13 @@ import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.Blob
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polygon
+import com.google.android.material.slider.Slider
 
 class Search : Fragment() {
     private var _binding: FragmentSearchBinding? = null
@@ -42,20 +46,6 @@ class Search : Fragment() {
     private var radiusOverlay: Polygon? = null
     private lateinit var adapter: ApplianceAdapter
     private val itemCircles = mutableMapOf<String, Polygon>()
-
-    private fun getCurrentLocation() {
-        try {
-            fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
-                location?.let {
-                    userLocation = GeoPoint(it.latitude, it.longitude)
-                    binding.mapView.controller.animateTo(userLocation)
-                    updateMapOverlays()
-                }
-            }
-        } catch (e: SecurityException) {
-            Snackbar.make(binding.root, "Location permission is required", Snackbar.LENGTH_LONG).show()
-        }
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -74,10 +64,163 @@ class Search : Fragment() {
             requireContext(),
             requireContext().getSharedPreferences("osmdroid", Context.MODE_PRIVATE)
         )
-        
+
         setupMap()
         setupUI()
-        loadUserLocation() // This will load the user's registered address from Firestore
+        loadUserLocation()
+    }
+
+    private fun setupUI() {
+        // Setup RecyclerView
+        adapter = ApplianceAdapter(items) { item ->
+            findNavController().navigate(
+                R.id.action_search_to_details,
+                Bundle().apply { putParcelable("item", item) }
+            )
+        }
+        binding.searchResults.apply {
+            layoutManager = LinearLayoutManager(context)
+            adapter = this@Search.adapter
+        }
+
+        // Setup Category Spinner
+        val categories = Category.getDisplayNames().toMutableList()
+        categories.add(0, "All Categories")
+        
+        binding.categorySpinner.apply {
+            setAdapter(ArrayAdapter(
+                requireContext(),
+                android.R.layout.simple_dropdown_item_1line,
+                categories
+            ))
+            setText("All Categories", false)
+            setOnItemClickListener { _, _, _, _ ->
+                performSearch()
+            }
+        }
+
+        // Setup Distance Slider
+        binding.distanceSlider.apply {
+            valueFrom = 0.2f
+            valueTo = 10f
+            stepSize = 0.2f
+            value = 1f
+            
+            // Update label during drag
+            addOnChangeListener { _, value, _ ->
+                binding.distanceLabel.text = "Distance: %.1f km".format(value)
+            }
+            
+            // Perform search only when drag ends
+            addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
+                override fun onStartTrackingTouch(slider: Slider) {
+                    // Do nothing when starting to drag
+                }
+
+                override fun onStopTrackingTouch(slider: Slider) {
+                    updateMapOverlays()
+                    performSearch()
+                }
+            })
+        }
+
+        // Setup Search Input
+        binding.searchInput.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) { performSearch() }
+        })
+    }
+
+    private fun performSearch() {
+        val userLoc = userLocation ?: return
+        val searchText = binding.searchInput.text?.toString()?.lowercase() ?: ""
+        val selectedCategory = binding.categorySpinner.text?.toString()
+        val maxDistance = binding.distanceSlider.value * 1000 // Convert to meters
+
+        // Start with base query
+        var query: Query = db.collection("RentOutPosts")
+
+        // Add category filter if selected and not "All Categories"
+        if (!selectedCategory.isNullOrEmpty() && selectedCategory != "All Categories") {
+            query = query.whereEqualTo("category", selectedCategory)
+        }
+
+        // Clear existing items and tracking sets
+        items.clear()
+        itemCircles.clear()
+        adapter.notifyDataSetChanged()
+
+        // Track processed items to prevent duplicates
+        val processedItemIds = mutableSetOf<String>()
+
+        // Execute query
+        query.get().addOnSuccessListener { documents ->
+            documents.forEach { document ->
+                val name = document.getString("name")?.lowercase() ?: ""
+                val description = document.getString("description")?.lowercase() ?: ""
+
+                if ((searchText.isEmpty() || name.contains(searchText) || 
+                    description.contains(searchText)) && 
+                    !processedItemIds.contains(document.id)) {
+                    
+                    document.getString("userId")?.let { userId ->
+                        db.collection("users").document(userId)
+                            .get()
+                            .addOnSuccessListener { userDoc ->
+                                val address = userDoc.get("address") as? Map<*, *>
+                                val lat = address?.get("latitude") as? Double
+                                val lon = address?.get("longitude") as? Double
+
+                                if (lat != null && lon != null) {
+                                    val itemLocation = GeoPoint(lat, lon)
+                                    val distance = userLoc.distanceToAsDouble(itemLocation)
+
+                                    // Only add item if within distance radius
+                                    if (distance <= maxDistance && !processedItemIds.contains(document.id)) {
+                                        processedItemIds.add(document.id)
+                                        
+                                        val fullName = "${userDoc.getString("firstName")} ${userDoc.getString("lastName")}"
+                                        val item = RentalItem(
+                                            id = document.id,
+                                            applianceName = document.getString("name") ?: "",
+                                            dailyRate = document.getDouble("price") ?: 0.0,
+                                            category = document.getString("category") ?: "",
+                                            condition = document.getString("condition") ?: "",
+                                            description = document.getString("description") ?: "",
+                                            availability = document.getBoolean("available") ?: true,
+                                            ownerName = fullName,
+                                            userId = userId,
+                                            image = document.get("images")?.let { images ->
+                                                (images as? Map<*, *>)?.values?.firstOrNull() as? Blob
+                                            }
+                                        )
+
+                                        items.add(item)
+                                        items.sortBy { it.applianceName }
+                                        adapter.notifyDataSetChanged()
+                                        updateMapOverlays()
+                                    }
+                                }
+                            }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun getCurrentLocation() {
+        try {
+            fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
+                location?.let {
+                    userLocation = GeoPoint(it.latitude, it.longitude)
+                    binding.mapView.controller.animateTo(userLocation)
+                    updateMapOverlays()
+                }
+            }
+        } catch (e: SecurityException) {
+            Snackbar.make(binding.root, "Location permission is required", Snackbar.LENGTH_LONG).show()
+        }
     }
 
     private fun loadUserLocation() {
@@ -139,53 +282,10 @@ class Search : Fragment() {
         }
     }
 
-    private fun setupUI() {
-        // Setup RecyclerView
-        adapter = ApplianceAdapter(items) { item ->
-            findNavController().navigate(
-                R.id.action_search_to_details,
-                Bundle().apply { putParcelable("item", item) }
-            )
-        }
-        binding.searchResults.apply {
-            layoutManager = LinearLayoutManager(context)
-            adapter = this@Search.adapter
-        }
-
-        // Setup Category Spinner
-        binding.categorySpinner.apply {
-            setAdapter(ArrayAdapter(
-                requireContext(),
-                android.R.layout.simple_dropdown_item_1line,
-                Category.getDisplayNames()
-            ))
-            setOnItemClickListener { _, _, _, _ -> performSearch() }
-        }
-
-        // Setup Distance Slider
-        binding.distanceSlider.apply {
-            valueFrom = 0.2f
-            valueTo = 10f
-            stepSize = 0.2f
-            value = 1f
-            addOnChangeListener { _, value, _ ->
-                updateMapOverlays()
-                performSearch()
-            }
-        }
-
-        // Setup Search Input
-        binding.searchInput.addTextChangedListener(object : android.text.TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: android.text.Editable?) { performSearch() }
-        })
-    }
-
     private fun updateMapOverlays() {
         val location = userLocation ?: return
 
-        // Clear existing overlays only once
+        // Clear existing overlays
         binding.mapView.overlays.clear()
         itemCircles.clear()
 
@@ -214,9 +314,11 @@ class Search : Fragment() {
         }
         binding.mapView.overlays.add(radiusOverlay)
 
-        // Add rental item circles
+        // Add rental item circles only for items within distance
         items.distinctBy { it.id }.forEach { item ->
-            addItemMarker(item)
+            if (!itemCircles.containsKey(item.id)) {
+                addItemMarker(item)
+            }
         }
 
         // Refresh the map
@@ -262,96 +364,6 @@ class Search : Fragment() {
                     binding.mapView.overlays.add(circle)
                     binding.mapView.invalidate()
                 }
-        }
-    }
-
-    private fun performSearch() {
-        val userLoc = userLocation ?: return
-        val searchText = binding.searchInput.text?.toString()?.lowercase() ?: ""
-        val selectedCategory = binding.categorySpinner.text?.toString()
-        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: return
-
-        // Clear previous results
-        items.clear()
-        val processedItems = mutableSetOf<String>()
-        val pendingItems = mutableListOf<RentalItem>()
-
-        var query = db.collection("RentOutPosts")
-            .whereNotEqualTo("userId", currentUserId)
-
-        if (!selectedCategory.isNullOrEmpty()) {
-            query = query.whereEqualTo("category", selectedCategory)
-        }
-        query.get().addOnSuccessListener { documents ->
-            var completedQueries = 0
-            val totalQueries = documents.size()
-
-            for (document in documents) {
-                if (processedItems.contains(document.id)) continue
-
-                val name = document.getString("name")?.lowercase() ?: ""
-                val description = document.getString("description")?.lowercase() ?: ""
-
-                if (searchText.isEmpty() || name.contains(searchText) ||
-                    description.contains(searchText)) {
-
-                    document.getString("userId")?.let { userId ->
-                        db.collection("users").document(userId)
-                            .get()
-                            .addOnSuccessListener { userDoc ->
-                                completedQueries++
-
-                                val address = userDoc.get("address") as? Map<*, *> ?: return@addOnSuccessListener
-                                val lat = address["latitude"] as? Double ?: return@addOnSuccessListener
-                                val lon = address["longitude"] as? Double ?: return@addOnSuccessListener
-                                val itemLocation = GeoPoint(lat, lon)
-
-                                if (userLoc.distanceToAsDouble(itemLocation) <= binding.distanceSlider.value * 1000) {
-                                    if (!processedItems.contains(document.id)) {
-                                        processedItems.add(document.id)
-
-                                        val item = RentalItem(
-                                            id = document.id,
-                                            applianceName = document.getString("name") ?: "",
-                                            dailyRate = document.getDouble("price") ?: 0.0,
-                                            category = document.getString("category") ?: "",
-                                            condition = document.getString("condition") ?: "",
-                                            description = document.getString("description") ?: "",
-                                            availability = document.getBoolean("available") ?: true,
-                                            ownerName = "${userDoc.getString("firstName")} ${userDoc.getString("lastName")}",
-                                            userId = userId,
-                                            image = document.get("images")?.let { images ->
-                                                (images as? Map<*, *>)?.values?.firstOrNull() as? Blob
-                                            }
-                                        )
-                                        pendingItems.add(item)
-                                    }
-                                }
-
-                                // Only update UI when all queries are complete
-                                if (completedQueries >= totalQueries) {
-                                    items.clear()
-                                    items.addAll(pendingItems.distinctBy { it.id })
-                                    items.sortBy { it.applianceName }
-                                    adapter.notifyDataSetChanged()// Clear circle tracking
-                                    updateMapOverlays()
-                                }
-                            }
-                            .addOnFailureListener {
-                                completedQueries++
-                            }
-                    }
-                } else {
-                    completedQueries++
-                }
-            }
-
-            // Handle case when there are no items
-            if (totalQueries == 0) {
-                items.clear()
-                adapter.notifyDataSetChanged()
-                updateMapOverlays()
-            }
         }
     }
 
