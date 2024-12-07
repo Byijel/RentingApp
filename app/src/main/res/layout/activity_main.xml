@@ -5,8 +5,12 @@
     android:id="@+id/drawer_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:clickable="true"
+    android:focusable="true"
     android:fitsSystemWindows="true"
-    tools:openDrawer="start">
+    android:touchscreenBlocksFocus="true"
+    tools:openDrawer="start"
+    app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
     <include
         android:id="@+id/app_bar_main"
