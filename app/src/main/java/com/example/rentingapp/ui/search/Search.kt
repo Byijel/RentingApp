@@ -285,7 +285,7 @@ class Search : Fragment() {
     private fun updateMapOverlays() {
         val location = userLocation ?: return
 
-        // Clear existing overlays
+        // Clear existing overlays and tracking
         binding.mapView.overlays.clear()
         itemCircles.clear()
 
@@ -314,11 +314,9 @@ class Search : Fragment() {
         }
         binding.mapView.overlays.add(radiusOverlay)
 
-        // Add rental item circles only for items within distance
-        items.distinctBy { it.id }.forEach { item ->
-            if (!itemCircles.containsKey(item.id)) {
-                addItemMarker(item)
-            }
+        // Add markers for current items only
+        items.forEach { item ->
+            addItemMarker(item)
         }
 
         // Refresh the map
@@ -329,6 +327,9 @@ class Search : Fragment() {
         // Skip if circle already exists for this item
         if (itemCircles.containsKey(item.id)) return
 
+        val userLoc = userLocation ?: return
+        val maxDistance = binding.distanceSlider.value * 1000 // Convert to meters
+
         item.userId?.let { userId ->
             db.collection("users").document(userId)
                 .get()
@@ -337,32 +338,37 @@ class Search : Fragment() {
                     val lat = address["latitude"] as? Double ?: return@addOnSuccessListener
                     val lon = address["longitude"] as? Double ?: return@addOnSuccessListener
 
-                    // Create random offset
-                    val random = java.util.Random()
-                    val offsetLat = random.nextDouble() * 0.002 - 0.001
-                    val offsetLon = random.nextDouble() * 0.002 - 0.001
+                    val itemLocation = GeoPoint(lat, lon)
+                    
+                    // Only add marker if item is within distance radius
+                    if (userLoc.distanceToAsDouble(itemLocation) <= maxDistance) {
+                        // Create random offset
+                        val random = java.util.Random()
+                        val offsetLat = random.nextDouble() * 0.002 - 0.001
+                        val offsetLon = random.nextDouble() * 0.002 - 0.001
 
-                    val offsetLocation = GeoPoint(lat + offsetLat, lon + offsetLon)
-                    val radius = 100.0 + random.nextDouble() * 100.0
-                    val points = ArrayList<GeoPoint>()
+                        val offsetLocation = GeoPoint(lat + offsetLat, lon + offsetLon)
+                        val radius = 100.0 + random.nextDouble() * 100.0
+                        val points = ArrayList<GeoPoint>()
 
-                    for (i in 0..360 step 10) {
-                        val point = offsetLocation.destinationPoint(radius, i.toDouble())
-                        points.add(point)
+                        for (i in 0..360 step 10) {
+                            val point = offsetLocation.destinationPoint(radius, i.toDouble())
+                            points.add(point)
+                        }
+
+                        val circle = Polygon().apply {
+                            this.points = points
+                            fillColor = Color.argb(150, 255, 165, 0)
+                            strokeColor = Color.rgb(255, 165, 0)
+                            strokeWidth = 3f
+                            title = "${item.applianceName} - €${item.dailyRate}/day"
+                        }
+
+                        // Store circle in tracking map and add to map
+                        itemCircles[item.id] = circle
+                        binding.mapView.overlays.add(circle)
+                        binding.mapView.invalidate()
                     }
-
-                    val circle = Polygon().apply {
-                        this.points = points
-                        fillColor = Color.argb(150, 255, 165, 0)
-                        strokeColor = Color.rgb(255, 165, 0)
-                        strokeWidth = 3f
-                        title = "${item.applianceName} - €${item.dailyRate}/day"
-                    }
-
-                    // Store circle in tracking map
-                    itemCircles[item.id] = circle
-                    binding.mapView.overlays.add(circle)
-                    binding.mapView.invalidate()
                 }
         }
     }
