@@ -33,6 +33,12 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polygon
 import com.google.android.material.slider.Slider
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 class Search : Fragment() {
     private var _binding: FragmentSearchBinding? = null
@@ -46,6 +52,11 @@ class Search : Fragment() {
     private var radiusOverlay: Polygon? = null
     private lateinit var adapter: ApplianceAdapter
     private val itemCircles = mutableMapOf<String, Polygon>()
+
+    private var searchJob: Job? = null
+    private val searchScope = CoroutineScope(
+        Dispatchers.Main + Job()
+    )
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -124,15 +135,24 @@ class Search : Fragment() {
             })
         }
 
-        // Setup Search Input
+        // Setup Search Input with debouncing
         binding.searchInput.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable?) { performSearch() }
+            override fun afterTextChanged(s: Editable?) {
+                searchJob?.cancel()
+                searchJob = searchScope.launch {
+                    delay(300) // 300ms delay
+                    performSearch()
+                }
+            }
         })
     }
 
     private fun performSearch() {
+        // Cancel any existing search
+        searchJob?.cancel()
+
         val userLoc = userLocation ?: return
         val searchText = binding.searchInput.text?.toString()?.lowercase() ?: ""
         val selectedCategory = binding.categorySpinner.text?.toString()
@@ -153,9 +173,18 @@ class Search : Fragment() {
 
         // Track processed items to prevent duplicates
         val processedItemIds = mutableSetOf<String>()
+        val pendingItems = mutableListOf<RentalItem>()
+        var pendingQueries = 0
+        var completedQueries = 0
 
         // Execute query
         query.get().addOnSuccessListener { documents ->
+            if (documents.isEmpty) {
+                adapter.notifyDataSetChanged()
+                updateMapOverlays()
+                return@addOnSuccessListener
+            }
+
             documents.forEach { document ->
                 val name = document.getString("name")?.lowercase() ?: ""
                 val description = document.getString("description")?.lowercase() ?: ""
@@ -164,10 +193,13 @@ class Search : Fragment() {
                     description.contains(searchText)) && 
                     !processedItemIds.contains(document.id)) {
                     
+                    processedItemIds.add(document.id)
                     document.getString("userId")?.let { userId ->
+                        pendingQueries++
                         db.collection("users").document(userId)
                             .get()
                             .addOnSuccessListener { userDoc ->
+                                completedQueries++
                                 val address = userDoc.get("address") as? Map<*, *>
                                 val lat = address?.get("latitude") as? Double
                                 val lon = address?.get("longitude") as? Double
@@ -176,10 +208,7 @@ class Search : Fragment() {
                                     val itemLocation = GeoPoint(lat, lon)
                                     val distance = userLoc.distanceToAsDouble(itemLocation)
 
-                                    // Only add item if within distance radius
-                                    if (distance <= maxDistance && !processedItemIds.contains(document.id)) {
-                                        processedItemIds.add(document.id)
-                                        
+                                    if (distance <= maxDistance) {
                                         val fullName = "${userDoc.getString("firstName")} ${userDoc.getString("lastName")}"
                                         val item = RentalItem(
                                             id = document.id,
@@ -195,16 +224,35 @@ class Search : Fragment() {
                                                 (images as? Map<*, *>)?.values?.firstOrNull() as? Blob
                                             }
                                         )
-
-                                        items.add(item)
-                                        items.sortBy { it.applianceName }
-                                        adapter.notifyDataSetChanged()
-                                        updateMapOverlays()
+                                        pendingItems.add(item)
                                     }
+                                }
+
+                                if (completedQueries >= pendingQueries) {
+                                    items.clear()
+                                    items.addAll(pendingItems.distinctBy { it.id })
+                                    items.sortBy { it.applianceName }
+                                    adapter.notifyDataSetChanged()
+                                    updateMapOverlays()
+                                }
+                            }
+                            .addOnFailureListener {
+                                completedQueries++
+                                if (completedQueries >= pendingQueries) {
+                                    items.clear()
+                                    items.addAll(pendingItems.distinctBy { it.id })
+                                    items.sortBy { it.applianceName }
+                                    adapter.notifyDataSetChanged()
+                                    updateMapOverlays()
                                 }
                             }
                     }
                 }
+            }
+
+            if (pendingQueries == 0) {
+                adapter.notifyDataSetChanged()
+                updateMapOverlays()
             }
         }
     }
@@ -389,6 +437,8 @@ class Search : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        searchJob?.cancel() // Cancel any pending search
+        searchScope.cancel() // Cancel the scope
         binding.mapView.overlays.clear()
         itemCircles.clear()
         binding.mapView.onDetach()
