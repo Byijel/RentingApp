@@ -8,20 +8,14 @@
     <string name="action_settings">Settings</string>
 
     <!--    MENU ITEMS  -->
-    <string name="menu_slideshow">slide show</string>
     <string name="menu_home">Home</string>
     <string name="menu_search">Search</string>
-    <string name="menu_rent_near_me">Rent Near Me</string>
-    <string name="menu_my_rents">My Rents</string>
-    <string name="menu_rent_out"> Rent Out</string>
+    <string name="menu_rent_out">Rent Out</string>
+
     <!--  Home Page  -->
     <string name="home_blank_fragment">Home Page</string>
     <!--  Search Page  -->
     <string name="search_blank_fragment">Search Page</string>
-    <!-- Rents Near Me -->
-    <string name="rents_near_me_blank_fragment">Rents Near me Page</string>
-    <!-- My Rents -->
-    <string name="my_rents_blank_fragment">My Rents Page</string>
     <!-- Rent Out -->
     <string name="rent_out_blank_fragment">Rent out Page</string>
     <string name="rent_out_title">Rent Out Your Item</string>
@@ -41,5 +35,4 @@
     <string name="rent_out_name_hint">Enter item name</string>
     <string name="appliance_image_description">Appliance image</string>
     <string name="owner_label">Owner:</string>
-
 </resources>
