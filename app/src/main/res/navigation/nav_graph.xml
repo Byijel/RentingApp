@@ -50,17 +50,9 @@
             app:destination="@id/detailsFragment" />
     </fragment>
     <fragment
-        android:id="@+id/nav_rent_near_me"
-        android:name="com.example.rentingapp.ui.rentNearMe.RentNearMe"
-        tools:layout="@layout/fragment_rent_near_me" />
-    <fragment
         android:id="@+id/nav_rent_out"
         android:name="com.example.rentingapp.ui.rentOut.RentOut"
         tools:layout="@layout/fragment_rent_out" />
-    <fragment
-        android:id="@+id/nav_my_rents"
-        android:name="com.example.rentingapp.ui.myRents.MyRents"
-        tools:layout="@layout/fragment_my_rents" />
 
     <fragment
         android:id="@+id/detailsFragment"
