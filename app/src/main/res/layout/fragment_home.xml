@@ -15,7 +15,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Items You're Renting"
+            android:text="@string/home_items_renting"
             android:textSize="24sp"
             android:textColor="@android:color/black"
             android:textStyle="bold"
@@ -34,7 +34,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Items You're Renting Out"
+            android:text="@string/home_items_renting_out"
             android:textSize="24sp"
             android:textColor="@android:color/black"
             android:textStyle="bold"

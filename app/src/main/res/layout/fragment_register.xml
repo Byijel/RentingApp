@@ -16,7 +16,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="32dp"
-            android:text="Create Account"
+            android:text="@string/register_title"
             android:textColor="@color/blue_main"
             android:textSize="32sp"
             android:textStyle="bold"
@@ -29,7 +29,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Sign up to get started"
+            android:text="@string/register_subtitle"
             android:textColor="@android:color/darker_gray"
             android:textSize="16sp"
             app:layout_constraintEnd_toEndOf="parent"
@@ -42,6 +42,7 @@
             android:layout_height="150dp"
             android:layout_marginTop="16dp"
             android:src="@drawable/ic_profile_placeholder"
+            android:contentDescription="@string/profile_image_description"
             android:scaleType="centerCrop"
             app:layout_constraintTop_toBottomOf="@id/subtitleText"
             app:layout_constraintStart_toStartOf="parent"
@@ -64,7 +65,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:layout_marginEnd="8dp"
-                android:text="Upload Image" />
+                android:text="@string/register_upload_image" />
 
             <Button
                 android:id="@+id/buttonTakePicture"
@@ -72,7 +73,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:layout_marginStart="8dp"
-                android:text="Take Picture" />
+                android:text="@string/register_take_picture" />
         </LinearLayout>
 
         <com.google.android.material.textfield.TextInputLayout
@@ -81,7 +82,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="32dp"
-            android:hint="Email"
+            android:hint="@string/register_email_hint"
             app:errorEnabled="true"
             app:layout_constraintTop_toBottomOf="@id/buttonContainer">
 
@@ -107,7 +108,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="8dp"
                 android:layout_weight="1"
-                android:hint="First Name"
+                android:hint="@string/register_first_name_hint"
                 app:errorEnabled="true">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -124,7 +125,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:layout_weight="1"
-                android:hint="Last Name"
+                android:hint="@string/register_last_name_hint"
                 app:errorEnabled="true">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -142,10 +143,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:hint="Password"
+            android:hint="@string/register_password_hint"
             app:errorEnabled="true"
-            app:layout_constraintTop_toBottomOf="@id/nameContainer"
-            app:passwordToggleEnabled="true">
+            app:passwordToggleEnabled="true"
+            app:layout_constraintTop_toBottomOf="@id/nameContainer">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/passwordInput"
@@ -160,7 +161,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:hint="Phone Number"
+            android:hint="@string/register_phone_hint"
             app:errorEnabled="true"
             app:layout_constraintTop_toBottomOf="@id/passwordLayout">
 
@@ -187,12 +188,39 @@
             android:id="@+id/registerButton"
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="16dp"
-            android:text="Register"
+            android:layout_marginTop="32dp"
+            android:text="@string/register_button"
+            android:textAllCaps="false"
             android:textSize="16sp"
-            app:layout_constraintBottom_toBottomOf="parent"
+            app:cornerRadius="28dp"
             app:layout_constraintTop_toBottomOf="@id/progressBar" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="horizontal"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/registerButton">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/register_have_account"
+                android:textColor="@android:color/darker_gray" />
+
+            <TextView
+                android:id="@+id/loginLink"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:text="@string/register_login"
+                android:textColor="@color/blue_main"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground" />
+        </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>

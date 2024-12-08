@@ -12,7 +12,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="48dp"
-        android:text="Welcome Back!"
+        android:text="@string/login_welcome"
         android:textColor="@color/blue_main"
         android:textSize="32sp"
         android:textStyle="bold"
@@ -25,7 +25,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="Sign in to continue"
+        android:text="@string/login_subtitle"
         android:textColor="@android:color/darker_gray"
         android:textSize="16sp"
         app:layout_constraintEnd_toEndOf="parent"
@@ -38,6 +38,7 @@
         android:layout_height="130dp"
         android:layout_marginTop="23dp"
         android:alpha="0.9"
+        android:contentDescription="@string/app_logo_description"
         android:src="@mipmap/ic_logo_round"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -49,7 +50,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="32dp"
-        android:hint="Email"
+        android:hint="@string/login_email_hint"
         app:errorEnabled="true"
         app:layout_constraintTop_toBottomOf="@id/profileIcon">
 
@@ -66,7 +67,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:hint="Password"
+        android:hint="@string/login_password_hint"
         app:errorEnabled="true"
         app:layout_constraintTop_toBottomOf="@id/emailLayout"
         app:passwordToggleEnabled="true">
@@ -83,7 +84,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="Forgot password?"
+        android:text="@string/login_forgot_password"
         android:textColor="@color/blue_main"
         android:textSize="14sp"
         android:clickable="true"
@@ -97,7 +98,7 @@
         android:layout_width="match_parent"
         android:layout_height="56dp"
         android:layout_marginTop="32dp"
-        android:text="Sign In"
+        android:text="@string/login_sign_in"
         android:textAllCaps="false"
         android:textSize="16sp"
         app:cornerRadius="28dp"
@@ -115,15 +116,19 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Don't have an account? "
+            android:text="@string/login_no_account"
             android:textColor="@android:color/darker_gray" />
 
         <TextView
             android:id="@+id/registerButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Sign Up"
+            android:layout_marginStart="4dp"
+            android:text="@string/login_register"
             android:textColor="@color/blue_main"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackground"
             android:textStyle="bold" />
     </LinearLayout>
 

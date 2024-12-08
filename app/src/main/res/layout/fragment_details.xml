@@ -15,7 +15,8 @@
             android:layout_width="match_parent"
             android:layout_height="200dp"
             android:scaleType="centerCrop"
-            android:background="@drawable/placeholder_appliance"/>
+            android:background="@drawable/placeholder_appliance"
+            android:contentDescription="@string/details_item_image"/>
 
         <TextView
             android:id="@+id/itemName"
@@ -91,7 +92,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="Rent"
+            android:text="@string/details_rent_button"
             android:padding="12dp"
             android:visibility="gone"/>
 
@@ -108,10 +109,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Remove Listing"
+            android:text="@string/details_remove_listing"
             android:padding="12dp"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:visibility="gone"/>
 
     </LinearLayout>
-</ScrollView> 
+</ScrollView>

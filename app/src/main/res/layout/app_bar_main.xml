@@ -25,7 +25,7 @@
                 android:layout_height="match_parent"
                 android:layout_gravity="end|center_vertical"
                 android:layout_marginEnd="0pt"
-                android:contentDescription="App Logo"
+                android:contentDescription="@string/app_logo_description"
                 android:src="@mipmap/ic_logo_foreground" />
 
         </androidx.appcompat.widget.Toolbar>
