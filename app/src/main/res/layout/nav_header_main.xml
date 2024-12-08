@@ -60,7 +60,8 @@
             android:src="@drawable/ic_profile_placeholder"
             app:civ_border_width="2dp"
             app:civ_border_color="@color/white"
-            android:contentDescription="@string/nav_header_desc" />
+            android:contentDescription="@string/nav_header_desc"
+            tools:ignore="MissingClass" />
     </LinearLayout>
 
 </LinearLayout>

@@ -11,7 +11,7 @@
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Search appliances"
+        android:hint="@string/search_appliances"
         app:startIconDrawable="@drawable/ic_search_search">
 
         <com.google.android.material.textfield.TextInputEditText
@@ -27,7 +27,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:hint="Category">
+        android:hint="@string/category">
 
         <AutoCompleteTextView
             android:id="@+id/categorySpinner"
@@ -40,7 +40,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="Maximum Distance: 0 km"
+        android:text="@string/maximum_distance_0_km"
         android:id="@+id/distanceLabel"/>
 
     <com.google.android.material.slider.Slider

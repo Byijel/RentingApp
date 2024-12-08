@@ -32,7 +32,7 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/imageRentedItem"
-            tools:text="Item Name" />
+            tools:text="@string/item_name" />
 
         <TextView
             android:id="@+id/textOwner"
@@ -43,7 +43,7 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/textItemName"
-            tools:text="Owner: John Doe" />
+            tools:text="@string/owner_john_doe" />
 
         <TextView
             android:id="@+id/textDates"
@@ -54,7 +54,7 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/textOwner"
-            tools:text="From: 01/01/2024 To: 15/01/2024" />
+            tools:text="@string/from_01_01_2024_to_15_01_2024" />
 
         <TextView
             android:id="@+id/textRemainingDays"
@@ -66,7 +66,7 @@
             android:textStyle="bold"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/textDates"
-            tools:text="5 days remaining" />
+            tools:text="@string/_5_days_remaining" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

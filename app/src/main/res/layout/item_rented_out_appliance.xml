@@ -33,7 +33,7 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/imageRentedOutItem"
-            tools:text="Item Name" />
+            tools:text="@string/item_name" />
 
         <TextView
             android:id="@+id/textRenter"
@@ -46,7 +46,7 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/textItemName"
-            tools:text="Rented by: Not rented" />
+            tools:text="@string/rented_by_not_rented" />
 
         <TextView
             android:id="@+id/textDates"
@@ -58,7 +58,7 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/textRenter"
-            tools:text="From: -- To: --" />
+            tools:text="@string/Date_empty" />
 
         <TextView
             android:id="@+id/textRemainingDays"
@@ -71,7 +71,7 @@
             android:textStyle="bold"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/textDates"
-            tools:text="Not currently rented" />
+            tools:text="@string/not_currently_rented" />
 
         <!-- Add a spacer view at the bottom to ensure consistent height -->
         <Space

@@ -27,7 +27,7 @@
             android:elevation="4dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            tools:text="Available" />
+            tools:text="@string/available" />
 
         <!-- Item Image -->
         <ImageView
@@ -56,7 +56,7 @@
             app:layout_constraintEnd_toStartOf="@id/imageAppliance"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            tools:text="Washing Machine" />
+            tools:text="@string/washing_machine" />
 
         <TextView
             android:id="@+id/textCategory"
@@ -67,7 +67,7 @@
             app:layout_constraintEnd_toStartOf="@id/imageAppliance"
             app:layout_constraintStart_toStartOf="@id/textApplianceName"
             app:layout_constraintTop_toBottomOf="@id/textApplianceName"
-            tools:text="Home Appliances" />
+            tools:text="@string/home_appliances" />
 
         <TextView
             android:id="@+id/textDailyRate"
@@ -80,7 +80,7 @@
             app:layout_constraintEnd_toStartOf="@id/imageAppliance"
             app:layout_constraintStart_toStartOf="@id/textApplianceName"
             app:layout_constraintTop_toBottomOf="@id/textCategory"
-            tools:text="€10/day" />
+            tools:text="@string/_10_day" />
 
         <TextView
             android:id="@+id/textDescription"
@@ -93,7 +93,7 @@
             app:layout_constraintEnd_toStartOf="@id/imageAppliance"
             app:layout_constraintStart_toStartOf="@id/textApplianceName"
             app:layout_constraintTop_toBottomOf="@id/textDailyRate"
-            tools:text="A high-quality washing machine perfect for your laundry needs..." />
+            tools:text="@string/a_high_quality_washing_machine_perfect_for_your_laundry_needs" />
 
         <TextView
             android:id="@+id/textCondition"
@@ -140,7 +140,7 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/textUserLabel"
             app:layout_constraintTop_toTopOf="@id/textUserLabel"
-            tools:text="Owner Name" />
+            tools:text="@string/owner_name" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
