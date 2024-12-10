@@ -18,6 +18,7 @@ import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
 import androidx.navigation.ui.NavigationUI
+import androidx.core.view.GravityCompat
 import com.example.rentingapp.databinding.ActivityMainBinding
 import com.example.rentingapp.services.FirestoreImageService
 import com.google.android.material.navigation.NavigationView
@@ -57,6 +58,7 @@ class MainActivity : AppCompatActivity() {
 
         // Disable swipe gesture
         drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
+        drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED, GravityCompat.START)
 
         appBarConfiguration = AppBarConfiguration(
             setOf(R.id.nav_home, R.id.nav_search, R.id.nav_rent_out, R.id.nav_address_registration),

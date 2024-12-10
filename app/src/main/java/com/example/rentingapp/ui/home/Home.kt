@@ -20,6 +20,8 @@ import com.example.rentingapp.R
 import com.example.rentingapp.models.RentalItem
 import com.example.rentingapp.adapters.RentedItemAdapter
 import com.example.rentingapp.adapters.RentedOutItemAdapter
+import java.util.*
+import java.util.concurrent.TimeUnit
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -167,23 +169,38 @@ class Home : Fragment() {
                     .addOnSuccessListener { userDocument ->
                         val fullName = "${userDocument.getString("firstName")} ${userDocument.getString("lastName")}"
                         
-                        val item = RentalItem(
-                            id = itemDoc.id,
-                            applianceName = itemDoc.getString("name") ?: "",
-                            dailyRate = itemDoc.getDouble("price") ?: 0.0,
-                            category = itemDoc.getString("category") ?: "",
-                            condition = itemDoc.getString("condition") ?: "",
-                            description = itemDoc.getString("description") ?: "",
-                            availability = itemDoc.getBoolean("available") ?: true,
-                            image = (itemDoc.get("images") as? Map<String, Any>)?.values?.firstOrNull() as? Blob,
-                            createdAt = itemDoc.getTimestamp("createdAt") ?: Timestamp.now(),
-                            ownerName = fullName,
-                            startDate = document.getTimestamp("startDate"),
-                            endDate = document.getTimestamp("endDate"),
-                            userId = itemDoc.getString("userId") ?: ""
-                        )
-                        itemsList.add(item)
-                        adapter.notifyDataSetChanged()
+                        // Get rental end date
+                        val endDate = document.getTimestamp("endDate")?.toDate()
+                        val today = Calendar.getInstance().time
+                        
+                        // Only add item if it's not expired or if it expired less than 2 days ago
+                        if (endDate != null) {
+                            val daysSinceExpiry = TimeUnit.DAYS.convert(
+                                today.time - endDate.time,
+                                TimeUnit.MILLISECONDS
+                            )
+                            
+                            // Show if not expired or expired less than 2 days ago
+                            if (daysSinceExpiry < 2) {
+                                val item = RentalItem(
+                                    id = itemDoc.id,
+                                    applianceName = itemDoc.getString("name") ?: "",
+                                    dailyRate = itemDoc.getDouble("price") ?: 0.0,
+                                    category = itemDoc.getString("category") ?: "",
+                                    condition = itemDoc.getString("condition") ?: "",
+                                    description = itemDoc.getString("description") ?: "",
+                                    availability = itemDoc.getBoolean("available") ?: true,
+                                    image = (itemDoc.get("images") as? Map<String, Any>)?.values?.firstOrNull() as? Blob,
+                                    createdAt = itemDoc.getTimestamp("createdAt") ?: Timestamp.now(),
+                                    ownerName = fullName,
+                                    startDate = document.getTimestamp("startDate"),
+                                    endDate = document.getTimestamp("endDate"),
+                                    userId = itemDoc.getString("userId") ?: ""
+                                )
+                                itemsList.add(item)
+                                adapter.notifyDataSetChanged()
+                            }
+                        }
                     }
             }
     }
