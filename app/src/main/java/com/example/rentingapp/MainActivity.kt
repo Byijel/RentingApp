@@ -110,21 +110,42 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        Log.d("MainActivity", "onStart called")
+        
+        // Check if user is logged in
+        val currentUser = auth.currentUser
+        if (currentUser != null) {
+            Log.d("MainActivity", "User is logged in, refreshing navigation header")
+            refreshNavigationHeader()
+        } else {
+            Log.d("MainActivity", "No user logged in")
+        }
+    }
+
     private fun loadProfileImageInHeader(profileImageView: ImageView) {
         val currentUser = auth.currentUser
+
+        Log.d("MainActivity", "Loading profile image - Current user: ${currentUser?.uid}")
 
         currentUser?.let { user ->
             db.collection("users").document(user.uid)
                 .get()
                 .addOnSuccessListener { document ->
                     Log.d("MainActivity", "User document retrieved successfully")
+                    Log.d("MainActivity", "Document data: ${document.data}")
                     
                     val imageBlob = document.get("profileImage") as? Blob
+                    Log.d("MainActivity", "Profile image blob: $imageBlob")
+
                     if (imageBlob != null) {
-                        Log.d("MainActivity", "Profile image blob found")
+                        Log.d("MainActivity", "Profile image blob size: ${imageBlob.toBytes().size} bytes")
                         val bitmap = imageService.blobToBitmap(imageBlob)
+                        Log.d("MainActivity", "Converted bitmap: ${bitmap != null}")
+                        
                         if (bitmap != null) {
-                            Log.d("MainActivity", "Successfully converted blob to bitmap")
+                            Log.d("MainActivity", "Bitmap dimensions: ${bitmap.width}x${bitmap.height}")
                             // Create a circular drawable
                             val roundedDrawable = RoundedBitmapDrawableFactory.create(resources, bitmap)
                             roundedDrawable.isCircular = true
@@ -152,6 +173,12 @@ class MainActivity : AppCompatActivity() {
     private fun refreshNavigationHeader() {
         val navView: NavigationView = binding.navView
         val headerView = navView.getHeaderView(0)
+        
+        if (headerView == null) {
+            Log.e("MainActivity", "Navigation header view is null")
+            return
+        }
+
         val userNameTextView = headerView.findViewById<TextView>(R.id.userNameTextView)
         val userEmailTextView = headerView.findViewById<TextView>(R.id.userEmailTextView)
         val profileImageView = headerView.findViewById<ImageView>(R.id.nav_header_profile_image)
@@ -162,17 +189,24 @@ class MainActivity : AppCompatActivity() {
         profileImageView.setImageResource(R.drawable.ic_profile_placeholder)
 
         val currentUser = auth.currentUser
+        Log.d("MainActivity", "Current user: ${currentUser?.uid}")
+
         if (currentUser != null) {
             userEmailTextView.text = currentUser.email
+            Log.d("MainActivity", "User email set: ${currentUser.email}")
 
             // Fetch user's name from Firestore using the authenticated user's ID
             db.collection("users").document(currentUser.uid)
                 .get()
                 .addOnSuccessListener { document ->
+                    Log.d("MainActivity", "User document retrieved")
                     if (document.exists()) {
                         val firstName = document.getString("firstName") ?: ""
                         val lastName = document.getString("lastName") ?: ""
-                        userNameTextView.text = "$firstName $lastName"
+                        val fullName = "$firstName $lastName"
+                        
+                        userNameTextView.text = fullName
+                        Log.d("MainActivity", "User name set: $fullName")
                         
                         // Load profile image only after we confirm we have the correct user document
                         loadProfileImageInHeader(profileImageView)
@@ -185,6 +219,8 @@ class MainActivity : AppCompatActivity() {
                     Log.e("MainActivity", "Error fetching user data: ${e.message}")
                     Toast.makeText(this, "Error loading user profile", Toast.LENGTH_SHORT).show()
                 }
+        } else {
+            Log.e("MainActivity", "No current user found during header refresh")
         }
     }
 
