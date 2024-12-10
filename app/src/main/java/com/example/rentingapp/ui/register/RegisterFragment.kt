@@ -2,8 +2,10 @@ package com.example.rentingapp.ui.register
 
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.LayoutInflater
@@ -13,6 +15,8 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.example.rentingapp.R
@@ -76,6 +80,34 @@ class RegisterFragment : Fragment() {
         }
     }
 
+    private val cameraPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            launchCamera()
+        } else {
+            Toast.makeText(context, "Camera permission is required to take pictures", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private val storagePermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        when {
+            permissions.getOrDefault(Manifest.permission.READ_MEDIA_IMAGES, false) -> {
+                // Permission granted for Android 13 and above
+                launchGallery()
+            }
+            permissions.getOrDefault(Manifest.permission.READ_EXTERNAL_STORAGE, false) -> {
+                // Permission granted for Android 12 and below
+                launchGallery()
+            }
+            else -> {
+                Toast.makeText(context, "Storage permission is required to select images", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -95,13 +127,11 @@ class RegisterFragment : Fragment() {
 
         // Setup image buttons
         binding.addImageButton.setOnClickListener {
-            val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-            imagePickerLauncher.launch(intent)
+            checkStoragePermission()
         }
 
         binding.buttonTakePicture.setOnClickListener {
-            val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-            cameraLauncher.launch(cameraIntent)
+            checkCameraPermission()
         }
 
         // Set initial profile image
@@ -198,7 +228,7 @@ class RegisterFragment : Fragment() {
     private fun handleRegistrationError(errorMessage: String) {
         Log.e("RegisterFragment", errorMessage)
         Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
-        
+
         // Reset UI
         binding.registerButton.isEnabled = true
         binding.progressBar.visibility = View.GONE
@@ -213,8 +243,8 @@ class RegisterFragment : Fragment() {
                 val imageBlob = document.get("profileImage") as? Blob
                 imageBlob?.let { blob ->
                     val bitmap = imageService.blobToBitmap(blob)
-                    bitmap?.let { 
-                        binding.profileImageView.setImageBitmap(it) 
+                    bitmap?.let {
+                        binding.profileImageView.setImageBitmap(it)
                     }
                 }
             }
@@ -309,6 +339,66 @@ class RegisterFragment : Fragment() {
     private fun isValidPhone(phone: String): Boolean {
         val phonePattern = "^[+]?[0-9]{10,13}$"
         return phone.matches(phonePattern.toRegex())
+    }
+
+    private fun checkCameraPermission() {
+        when {
+            requireContext().checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED -> {
+                launchCamera()
+            }
+            shouldShowRequestPermissionRationale(Manifest.permission.CAMERA) -> {
+                Toast.makeText(context, "Camera permission is required to take pictures", Toast.LENGTH_SHORT).show()
+                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+            else -> {
+                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+        }
+    }
+
+    private fun checkStoragePermission() {
+        when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
+                // For Android 13 and above, use READ_MEDIA_IMAGES
+                when {
+                    requireContext().checkSelfPermission(Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED -> {
+                        launchGallery()
+                    }
+                    shouldShowRequestPermissionRationale(Manifest.permission.READ_MEDIA_IMAGES) -> {
+                        Toast.makeText(context, "Storage permission is required to select images", Toast.LENGTH_SHORT).show()
+                        storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_MEDIA_IMAGES))
+                    }
+                    else -> {
+                        storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_MEDIA_IMAGES))
+                    }
+                }
+            }
+            else -> {
+                // For Android 12 and below, use READ_EXTERNAL_STORAGE
+                when {
+                    requireContext().checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED -> {
+                        launchGallery()
+                    }
+                    shouldShowRequestPermissionRationale(Manifest.permission.READ_EXTERNAL_STORAGE) -> {
+                        Toast.makeText(context, "Storage permission is required to select images", Toast.LENGTH_SHORT).show()
+                        storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE))
+                    }
+                    else -> {
+                        storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE))
+                    }
+                }
+            }
+        }
+    }
+
+    private fun launchCamera() {
+        val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        cameraLauncher.launch(cameraIntent)
+    }
+
+    private fun launchGallery() {
+        val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+        imagePickerLauncher.launch(intent)
     }
 
     override fun onDestroyView() {
