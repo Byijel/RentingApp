@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.LayoutInflater
@@ -90,12 +91,20 @@ class RegisterFragment : Fragment() {
     }
 
     private val storagePermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            launchGallery()
-        } else {
-            Toast.makeText(context, "Storage permission is required to select images", Toast.LENGTH_SHORT).show()
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        when {
+            permissions.getOrDefault(Manifest.permission.READ_MEDIA_IMAGES, false) -> {
+                // Permission granted for Android 13 and above
+                launchGallery()
+            }
+            permissions.getOrDefault(Manifest.permission.READ_EXTERNAL_STORAGE, false) -> {
+                // Permission granted for Android 12 and below
+                launchGallery()
+            }
+            else -> {
+                Toast.makeText(context, "Storage permission is required to select images", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -349,15 +358,35 @@ class RegisterFragment : Fragment() {
 
     private fun checkStoragePermission() {
         when {
-            requireContext().checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED -> {
-                launchGallery()
-            }
-            shouldShowRequestPermissionRationale(Manifest.permission.READ_EXTERNAL_STORAGE) -> {
-                Toast.makeText(context, "Storage permission is required to select images", Toast.LENGTH_SHORT).show()
-                storagePermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
+                // For Android 13 and above, use READ_MEDIA_IMAGES
+                when {
+                    requireContext().checkSelfPermission(Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED -> {
+                        launchGallery()
+                    }
+                    shouldShowRequestPermissionRationale(Manifest.permission.READ_MEDIA_IMAGES) -> {
+                        Toast.makeText(context, "Storage permission is required to select images", Toast.LENGTH_SHORT).show()
+                        storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_MEDIA_IMAGES))
+                    }
+                    else -> {
+                        storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_MEDIA_IMAGES))
+                    }
+                }
             }
             else -> {
-                storagePermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+                // For Android 12 and below, use READ_EXTERNAL_STORAGE
+                when {
+                    requireContext().checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED -> {
+                        launchGallery()
+                    }
+                    shouldShowRequestPermissionRationale(Manifest.permission.READ_EXTERNAL_STORAGE) -> {
+                        Toast.makeText(context, "Storage permission is required to select images", Toast.LENGTH_SHORT).show()
+                        storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE))
+                    }
+                    else -> {
+                        storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE))
+                    }
+                }
             }
         }
     }
