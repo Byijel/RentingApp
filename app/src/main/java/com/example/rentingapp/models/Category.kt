@@ -16,5 +16,9 @@ enum class Category(val displayName: String) {
 
     companion object {
         fun getDisplayNames(): Array<String> = values().map { it.displayName }.toTypedArray()
+        
+        fun fromDisplayName(displayName: String): Category {
+            return values().find { it.displayName == displayName } ?: OTHER
+        }
     }
 }
