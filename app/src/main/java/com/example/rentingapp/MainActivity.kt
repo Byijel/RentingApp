@@ -76,42 +76,7 @@ class MainActivity : AppCompatActivity() {
             checkUserAddress(cUser.uid)
         }
 
-        // Set user information in the navigation header
-        val headerView = navView.getHeaderView(0)
-        val userNameTextView = headerView.findViewById<TextView>(R.id.userNameTextView)
-        val userEmailTextView = headerView.findViewById<TextView>(R.id.userEmailTextView)
-        val profileImageView = headerView.findViewById<ImageView>(R.id.nav_header_profile_image)
-
-        // Reset views to default state
-        userNameTextView.text = ""
-        userEmailTextView.text = ""
-        profileImageView.setImageResource(R.drawable.ic_profile_placeholder)
-
-        val currentUser = auth.currentUser
-        if (currentUser != null) {
-            userEmailTextView.text = currentUser.email
-
-            // Fetch user's name from Firestore using the authenticated user's ID
-            db.collection("users").document(currentUser.uid)
-                .get()
-                .addOnSuccessListener { document ->
-                    if (document.exists()) {
-                        val firstName = document.getString("firstName") ?: ""
-                        val lastName = document.getString("lastName") ?: ""
-                        userNameTextView.text = "$firstName $lastName"
-                        
-                        // Load profile image only after we confirm we have the correct user document
-                        loadProfileImageInHeader(profileImageView)
-                    } else {
-                        Log.e("MainActivity", "User document does not exist for ID: ${currentUser.uid}")
-                        Toast.makeText(this, "Error loading user profile", Toast.LENGTH_SHORT).show()
-                    }
-                }
-                .addOnFailureListener { e ->
-                    Log.e("MainActivity", "Error fetching user data: ${e.message}")
-                    Toast.makeText(this, "Error loading user profile", Toast.LENGTH_SHORT).show()
-                }
-        }
+        refreshNavigationHeader()
 
         // Handle logout separately
         navView.menu.findItem(R.id.nav_logout).setOnMenuItemClickListener {
@@ -150,20 +115,73 @@ class MainActivity : AppCompatActivity() {
             db.collection("users").document(user.uid)
                 .get()
                 .addOnSuccessListener { document ->
+                    Log.d("MainActivity", "User document retrieved successfully")
+                    
                     val imageBlob = document.get("profileImage") as? Blob
-                    imageBlob?.let { blob ->
-                        val bitmap = imageService.blobToBitmap(blob)
-                        bitmap?.let { 
+                    if (imageBlob != null) {
+                        Log.d("MainActivity", "Profile image blob found")
+                        val bitmap = imageService.blobToBitmap(imageBlob)
+                        if (bitmap != null) {
+                            Log.d("MainActivity", "Successfully converted blob to bitmap")
                             // Create a circular drawable
-                            val roundedDrawable = RoundedBitmapDrawableFactory.create(resources, it)
+                            val roundedDrawable = RoundedBitmapDrawableFactory.create(resources, bitmap)
                             roundedDrawable.isCircular = true
                             profileImageView.setImageDrawable(roundedDrawable)
+                        } else {
+                            Log.e("MainActivity", "Failed to convert blob to bitmap")
+                            profileImageView.setImageResource(R.drawable.ic_profile_placeholder)
                         }
+                    } else {
+                        Log.e("MainActivity", "No profile image blob found")
+                        profileImageView.setImageResource(R.drawable.ic_profile_placeholder)
                     }
                 }
-                .addOnFailureListener {
+                .addOnFailureListener { exception ->
+                    Log.e("MainActivity", "Error fetching user document", exception)
                     // Set a default circular profile image if fetch fails
                     profileImageView.setImageResource(R.drawable.ic_profile_placeholder)
+                }
+        } ?: run {
+            Log.e("MainActivity", "No current user found")
+            profileImageView.setImageResource(R.drawable.ic_profile_placeholder)
+        }
+    }
+
+    private fun refreshNavigationHeader() {
+        val navView: NavigationView = binding.navView
+        val headerView = navView.getHeaderView(0)
+        val userNameTextView = headerView.findViewById<TextView>(R.id.userNameTextView)
+        val userEmailTextView = headerView.findViewById<TextView>(R.id.userEmailTextView)
+        val profileImageView = headerView.findViewById<ImageView>(R.id.nav_header_profile_image)
+
+        // Reset views to default state
+        userNameTextView.text = ""
+        userEmailTextView.text = ""
+        profileImageView.setImageResource(R.drawable.ic_profile_placeholder)
+
+        val currentUser = auth.currentUser
+        if (currentUser != null) {
+            userEmailTextView.text = currentUser.email
+
+            // Fetch user's name from Firestore using the authenticated user's ID
+            db.collection("users").document(currentUser.uid)
+                .get()
+                .addOnSuccessListener { document ->
+                    if (document.exists()) {
+                        val firstName = document.getString("firstName") ?: ""
+                        val lastName = document.getString("lastName") ?: ""
+                        userNameTextView.text = "$firstName $lastName"
+                        
+                        // Load profile image only after we confirm we have the correct user document
+                        loadProfileImageInHeader(profileImageView)
+                    } else {
+                        Log.e("MainActivity", "User document does not exist for ID: ${currentUser.uid}")
+                        Toast.makeText(this, "Error loading user profile", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Log.e("MainActivity", "Error fetching user data: ${e.message}")
+                    Toast.makeText(this, "Error loading user profile", Toast.LENGTH_SHORT).show()
                 }
         }
     }
@@ -172,18 +190,22 @@ class MainActivity : AppCompatActivity() {
         FirebaseFirestore.getInstance().collection("users").document(userId)
             .get()
             .addOnSuccessListener { document ->
-                val address = document.get("address") as? Map<*, *>
-                if (address == null || 
-                    address["street"].toString().isNullOrEmpty() || 
-                    address["city"].toString().isNullOrEmpty()) {
-                    // No address found, redirect to address registration
-                    navController.navigate(R.id.nav_address_registration)
+                val hasAddress = document.getBoolean("hasAddress") ?: false
+                
+                if (!hasAddress) {
+                    // Optionally show a dialog or toast suggesting to complete address
+                    runOnUiThread {
+                        Toast.makeText(
+                            this, 
+                            "Please complete your profile by adding an address", 
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
                 }
             }
             .addOnFailureListener { e ->
                 Log.e("MainActivity", "Error checking address: ${e.message}")
-                // In case of error, redirect to address registration to be safe
-                navController.navigate(R.id.nav_address_registration)
+                // Log the error but don't disrupt user flow
             }
     }
 
